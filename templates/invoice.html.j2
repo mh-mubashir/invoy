@@ -27,24 +27,42 @@
     .brand .title { font-weight: 700; font-size: 20px; color: var(--primary); }
 
     .seller h1 { margin: 0 0 6px; font-size: 22px; color: var(--primary); }
-    .badge { text-align: right; font-size: 12px; color: white; background: var(--primary); padding: 6px 10px; border-radius: 4px; }
+    .badge { text-align: right; font-size: 12px; color: white; background: var(--primary); padding: 6px 12px; border-radius: 6px; box-shadow: 0 2px 6px rgba(2,6,23,0.08); }
 
     .section { margin-top: 24px; }
     .meta { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-    .card { border: 1px solid #e5e7eb; border-radius: 10px; padding: 16px; background: #ffffffd9; backdrop-filter: blur(2px); }
-    h2 { font-size: 16px; margin: 0 0 8px; color: var(--primary); }
+    .card { border: 1px solid var(--card-border); border-top: 3px solid var(--accent); border-radius: 10px; padding: 16px; background: #ffffffd9; backdrop-filter: blur(2px); }
+    h2 { font-size: 17px; margin: 0 0 8px; color: var(--primary); }
 
     table { width: 100%; border-collapse: collapse; margin-top: 8px; }
     th, td { text-align: left; padding: 10px; border-bottom: 1px solid #e5e7eb; vertical-align: top; }
-    th { background: #f8fafc; font-weight: 600; }
+    th { background: var(--soft-accent); font-weight: 600; }
     tfoot td { font-weight: 700; }
     .right { text-align: right; }
     footer { margin-top: 32px; font-size: 12px; color: var(--muted); }
+  
+    /* Enhanced visuals */
+    :root { --card-border: #e6eef7; --soft-accent: rgba(14,165,233,0.08); --soft-accent-strong: rgba(14,165,233,0.20); }
+    .page { max-width: 1024px; margin: 24px auto; background: #fff; border-radius: 14px; box-shadow: 0 12px 30px rgba(2,6,23,0.06); }
+    .container { max-width: 960px; margin: 0 auto; padding: 24px 28px; }
+    .card { border: 1px solid var(--card-border); background: #ffffff; box-shadow: 0 1px 2px rgba(2,6,23,0.04), 0 1px 1px rgba(2,6,23,0.02); }
+    tbody tr:nth-child(odd) { background: #fcfdff; }
+    thead th { position: sticky; top: 0; }
+    .totals-panel { border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px 16px; background: var(--soft-accent-strong); width: 320px; margin-left: auto; }
+    .totals-row { display: flex; justify-content: space-between; padding: 6px 0; }
+    .totals-row.total { font-weight: 800; font-size: 18px; }
+    @media print {
+      .badge { display: inline-block; }
+      .decorative-top, .decorative-bottom { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .page { box-shadow: none; margin: 0; border-radius: 0; }
+      body { background: #fff; }
+    }
+
   </style>
 </head>
 <body>
   <div class="decorative-top">
-    <svg class="waves-top" viewBox="0 0 1440 320" preserveAspectRatio="none" aria-hidden="true"><path fill="rgba(14,165,233,0.15)" d="M0,128L60,112C120,96,240,64,360,85.3C480,107,600,181,720,181.3C840,181,960,107,1080,96C1200,85,1320,139,1380,165.3L1440,192L1440,0L1380,0C1320,0,1200,0,1080,0C960,0,840,0,720,0C600,0,480,0,360,0C240,0,120,0,60,0L0,0Z"></path></svg>
+    <svg class="waves-top" viewBox="0 0 1440 320" preserveAspectRatio="none" aria-hidden="true"><path fill="rgba(14,165,233,0.20)" d="M0,128L60,112C120,96,240,64,360,85.3C480,107,600,181,720,181.3C840,181,960,107,1080,96C1200,85,1320,139,1380,165.3L1440,192L1440,0L1380,0C1320,0,1200,0,1080,0C960,0,840,0,720,0C600,0,480,0,360,0C240,0,120,0,60,0L0,0Z"></path></svg>
     <div class="container">
       <header>
         <div class="brand">
@@ -131,7 +149,7 @@
   </div>
 
   <div class="decorative-bottom">
-    <svg class="waves-bottom" viewBox="0 0 1440 320" preserveAspectRatio="none" aria-hidden="true"><path fill="rgba(132,204,22,0.12)" d="M0,64L80,69.3C160,75,320,85,480,117.3C640,149,800,203,960,208C1120,213,1280,171,1360,149.3L1440,128L1440,320L1360,320C1280,320,1120,320,960,320C800,320,640,320,480,320C320,320,160,320,80,320L0,320Z"></path></svg>
+    <svg class="waves-bottom" viewBox="0 0 1440 320" preserveAspectRatio="none" aria-hidden="true"><path fill="rgba(132,204,22,0.16)" d="M0,64L80,69.3C160,75,320,85,480,117.3C640,149,800,203,960,208C1120,213,1280,171,1360,149.3L1440,128L1440,320L1360,320C1280,320,1120,320,960,320C800,320,640,320,480,320C320,320,160,320,80,320L0,320Z"></path></svg>
     <div class="container">
       <footer>
         <div>Payment instructions: {{ consultant.paymentInstructions }}</div>
