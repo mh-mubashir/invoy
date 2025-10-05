@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Invoice {{ invoice.invoiceId }}</title>
+  <style>
+    :root { --primary: {{ branding.primaryColor }}; --accent: {{ branding.accentColor }}; --muted: #6b7280; }
+    * { box-sizing: border-box; }
+    body { font-family: Inter, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; color: #0f172a; margin: 0; background: #ffffff; padding: 16px; }
+    .container { max-width: 100%; margin: 0 auto; }
+    header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 2px solid #e6eef7; }
+    .brand { display: flex; gap: 12px; align-items: center; }
+    .brand img { width: 40px; height: 40px; border-radius: 8px; object-fit: cover; }
+    .title { font-weight: 700; font-size: 20px; color: var(--primary); }
+    .badge { font-size: 11px; color: white; background: var(--primary); padding: 6px 12px; border-radius: 6px; font-weight: 600; }
+    .card { background: #fff; border: 1px solid #e6eef7; border-radius: 12px; padding: 16px; margin-bottom: 16px; box-shadow: 0 1px 2px rgba(2,6,23,0.04); }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    h2 { margin: 0 0 10px; font-size: 15px; color: var(--primary); font-weight: 600; }
+    table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 13px; }
+    th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid #eef2f7; vertical-align: top; }
+    th { background: #f1f7fd; font-weight: 600; position: sticky; top: 0; }
+    tbody tr:nth-child(odd) { background: #fbfdff; }
+    tfoot td { font-weight: 600; background: #f8fafc; }
+    .right { text-align: right; }
+    .footer { margin-top: 24px; padding-top: 16px; border-top: 1px solid #e6eef7; font-size: 12px; color: var(--muted); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="brand">
+        <img src="/static/logo.png" alt="Invoy logo" onerror="this.style.display='none'" />
+        <div class="title">Invoy</div>
+      </div>
+      <div class="badge">{{ branding.badgeText }}</div>
+    </header>
+
+    <div class="grid" style="margin-bottom:12px;">
+      <div class="card">
+        <h2>From</h2>
+        <div>{{ consultant.name }}</div>
+        <div>{{ consultant.address }}</div>
+        <div>{{ consultant.email }} • {{ consultant.phone }}</div>
+      </div>
+      <div class="card">
+        <h2>To</h2>
+        <div>{{ client.name }}</div>
+        <div>{{ client.email }}</div>
+      </div>
+    </div>
+
+    <div class="grid" style="margin-bottom:12px;">
+      <div class="card">
+        <h2>Invoice</h2>
+        <div>Invoice #: <strong>{{ invoice.invoiceId }}</strong></div>
+        <div>Issue Date: <strong>{{ invoice.issueDate }}</strong></div>
+        <div>Billing Period: <strong>{{ invoice.billingPeriod }}</strong></div>
+        <div>Currency: <strong>{{ consultant.currency }}</strong></div>
+        <div>Payment Terms: <strong>{{ consultant.paymentTerms }}</strong></div>
+      </div>
+      <div class="card">
+        <h2>AI Summary</h2>
+        <div>{{ aiSummary }}</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Breakdown (AI‑assisted)</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Subject</th>
+            <th>Agenda / Description</th>
+            <th class="right" style="width: 90px;">Hours</th>
+            <th class="right" style="width: 90px;">Rate</th>
+            <th class="right" style="width: 110px;">Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in items %}
+          <tr>
+            <td>{{ item.subject }}</td>
+            <td>{{ item.justification }}</td>
+            <td class="right">{{ '%.1f'|format(item.hours) }}</td>
+            <td class="right">{{ currencySymbol }}{{ '%.2f'|format(item.rate) }}</td>
+            <td class="right">{{ currencySymbol }}{{ '%.2f'|format(item.amount) }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+        <tfoot>
+          <tr><td colspan="3"></td><td class="right">Subtotal</td><td class="right">{{ currencySymbol }}{{ '%.2f'|format(totals.subtotal) }}</td></tr>
+          {% if totals.taxAmount and totals.taxAmount > 0 %}
+          <tr><td colspan="3"></td><td class="right">Tax</td><td class="right">{{ currencySymbol }}{{ '%.2f'|format(totals.taxAmount) }}</td></tr>
+          {% endif %}
+          <tr><td colspan="3"></td><td class="right"><strong>Total Due</strong></td><td class="right"><strong>{{ currencySymbol }}{{ '%.2f'|format(totals.totalDue) }}</strong></td></tr>
+        </tfoot>
+      </table>
+    </div>
+
+    <div class="footer">
+      <div>Payment instructions: {{ consultant.paymentInstructions }}</div>
+      <div>Questions? Contact {{ consultant.email }}</div>
+    </div>
+  </div>
+</body>
+</html>
