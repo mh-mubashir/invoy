@@ -34,3 +34,4 @@ celerybeat-schedule
 nosetests.xml
 coverage.xml
 vosk-model-small-en-us-0.15/
+vosk-model-en-us-0.22/
