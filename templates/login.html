@@ -92,7 +92,7 @@
 <body>
   <div class="container">
     <div class="logo">
-      <img src="/assets/logo.png" alt="Invoy AI">
+      <img src="/static/logo.png" alt="Invoy AI">
       InsideBox
     </div>
 
@@ -124,7 +124,7 @@
         .then(data => {
           console.log('Success:', data);
           // Redirect to Vue frontend at http://localhost:4173/
-          window.location.href = 'http://localhost:4173/';
+          window.location.href = 'http://localhost:8000/';
         })
         .catch(error => {
           console.error('Error:', error);

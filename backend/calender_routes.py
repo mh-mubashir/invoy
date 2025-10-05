@@ -9,7 +9,7 @@ from google.oauth2.credentials import Credentials
 from sqlalchemy.orm import Session
 from dotenv import load_dotenv
 from google.auth.transport.requests import Request as GoogleRequest
-
+from scripts.generate_invoices import generate_my_invoice
 from backend.db import UserToken, SessionLocal
 
 # Load env
@@ -156,8 +156,8 @@ def get_min_max_time(periodLabel):
     now = datetime.utcnow()
 
     # Default to current month if no month/year provided
-    month = month or now.month
-    year = year or now.year
+    month = now.month
+    year = now.year
 
     # Check if periodLabel contains a date range (e.g. "YYYY-MM-DD:YYYY-MM-DD")
     start_time = None
@@ -202,7 +202,7 @@ def get_calendar_events(
 
         print(f"🔹 Fetching calendar events for {periodLabel}...")
         time_min, time_max = get_min_max_time(periodLabel)
-
+        print("🕓 time_min:", time_min, time_max)
         params = {"timeMin": time_min, "timeMax": time_max, "singleEvents": True, "orderBy": "startTime"}
         response = requests.get(
             "https://www.googleapis.com/calendar/v3/calendars/primary/events",
@@ -235,35 +235,64 @@ def get_calendar_events(
             print(f"🔹 [FILTER] After attendee filter: {len(filtered)} events remain.")
 
         print(f"filtered events: {filtered}")
+        filename = "events.txt"
+        is_txt = os.path.splitext(filename)[1].lower() == ".txt"
         if save_to_file:
-            event_data = [] # Prepare a list to store event data
-            attendees_list = []
-            for ev in filtered: # Process each event
-                attendees = ev.get("attendees", [])
-                if attendees:
-                    attendees_list = [
-                        {
-                            "displayName": a.get("displayName", ""),
-                            "email": a.get("email", "")
-                        }
-                        for a in attendees
-                    ]
-                event = {
-                    "id": ev.get('id', ''),
-                    "title": ev.get('summary', ''),
-                    "description": ev.get('description', ''),
-                    "start": ev.get("start", {}).get("dateTime", ev.get("start", {}).get("date")),
-                    "end": ev.get("end", {}).get("dateTime", ev.get("end", {}).get("date")),
-                    "status": ev.get('status', ''),
-                    "attendees": attendees_list
-                }
-                event_data.append(event)
+            if not is_txt:
+                event_data = [] # Prepare a list to store event data
+                attendees_list = []
+                for ev in filtered: # Process each event
+                    attendees = ev.get("attendees", [])
+                    if attendees:
+                        attendees_list = [
+                            {
+                                "displayName": a.get("displayName", ""),
+                                "email": a.get("email", "")
+                            }
+                            for a in attendees
+                        ]
+                    event = {
+                        "id": ev.get('id', ''),
+                        "title": ev.get('summary', ''),
+                        "description": ev.get('description', ''),
+                        "start": ev.get("start", {}).get("dateTime", ev.get("start", {}).get("date")),
+                        "end": ev.get("end", {}).get("dateTime", ev.get("end", {}).get("date")),
+                        "status": ev.get('status', ''),
+                        "attendees": attendees_list
+                    }
+                    event_data.append(event)
 
-            # Write to JSON file (compact format)
-            with open('events.json', 'w') as f:
-                json.dump(event_data, f, separators=(',', ':'))
-            print(f"💾 [WRITE] Saved {len(filtered)} events to events.txt")
-
+                # Write to JSON file (compact format)
+                events_filename = 'events.json'
+                with open(events_filename, 'w') as f:
+                    json.dump(event_data, f, separators=(',', ':'))
+                print(f"💾 [WRITE] Saved {len(filtered)} events to {events_filename}")
+            else:
+                with open('events.txt', 'w') as f:
+                    billing_period = periodLabel.replace(":", " to ")
+                    f.write(f"Calendar export - Billing Period: {billing_period}\n")
+                    f.write("Timezone: America/Boston\n")
+                    f.write("Source: Google Calendar API (simulated)\n")
+                    for ev in filtered:
+                        f.write("Event:\n")
+                        f.write(f"  id: {ev.get('id', '-')}\n")
+                        f.write(f"  title: {ev.get('summary', '-')}\n")
+                        f.write(f"  description: {ev.get('description', '-')}\n")
+                        start = ev.get("start", {}).get("dateTime", ev.get("start", {}).get("date"))
+                        end = ev.get("end", {}).get("dateTime", ev.get("end", {}).get("date"))
+                        f.write(f"  start: {start}\n")
+                        f.write(f"  end: {end}\n")
+                        f.write(f"  status: {ev.get('status', '')}\n")
+                        attendees = ev.get("attendees", [])
+                        if attendees:
+                            f.write(f"  attendees:\n")
+                            for a in attendees:
+                                f.write(f"    - name: {a.get('displayName', '_')}\n")
+                                f.write(f"      email: {a.get('email', '')}\n")
+                        f.write("\n")
+                print(f"💾 [WRITE] Saved {len(filtered)} events to events.txt")
+        print(f"Saving file: {filename}")  
+        generate_my_invoice(filename)
 
         # return {
         #     "total": len(filtered),

@@ -117,6 +117,55 @@ def render_invoice(consultant, branding, client_key, client_info, items, period_
     out.write_text(html)
     return out
 
+def generate_my_invoice(filename):
+    consultant, branding, rules = load_config()
+    txt = Path(filename).read_text()
+    events = parse_calendar_txt(txt)
+    billable = [e for e in events if is_billable(e, rules, consultant['email'])]
+
+    m = re.search(r"Billing Period:\s*(\d{4}-\d{2}-\d{2})\s*to\s*(\d{4}-\d{2}-\d{2})", txt)
+    print("m", m)
+    if m:
+        period_start, period_end = m.group(1), m.group(2)
+    else:
+        period_start = events[0].start[:10]
+        period_end = events[-1].end[:10]
+    print("period_start", period_start)
+    print("period_end", period_end)
+
+    by_client = {}
+    for e in billable:
+        print("e", e)
+        client = identify_client(e, consultant['email'])
+        if not client:
+            continue
+        key = client['email'].lower()
+        by_client.setdefault(key, {'info': client, 'items': []})
+        print("key", key)
+        start = dtp.parse(e.start)
+        end = dtp.parse(e.end)
+        print("1", key)
+        tz = pytz.timezone(consultant['timezone'])
+        start_local = start.astimezone(tz)
+        print("2", key)
+        end_local = end.astimezone(tz)
+
+        print("3", key)
+        by_client[key]['items'].append({
+            'date': start_local.strftime('%Y-%m-%d'),
+            'timeRange': f"{start_local.strftime('%H:%M')}–{end_local.strftime('%H:%M')}",
+            'subject': e.title,
+            'agenda': (e.description or '').split('Agenda:')[-1].strip() if 'Agenda:' in (e.description or '') else '',
+            'durationHours': e.duration_hours
+        })
+    print("by_client", by_client)
+    generated = []
+    for key, data in by_client.items():
+        out = render_invoice(consultant, branding, key.replace('@','_').replace('.', '-'), data['info'], data['items'], period_start, period_end)
+        generated.append(str(out))
+
+    print('Generated invoices:', *generated, sep='\n - ')
+
 
 def main():
     parser = argparse.ArgumentParser(description='Generate invoice HTML from calendar txt sample.')
