@@ -146,8 +146,10 @@ export default function App() {
         throw new Error('Response was not valid JSON — check backend route.');
       }
 
-      const { totalH, hourly, invoicePath } = data;
+      const { totalH, hourly, invoicePath, attendee, periodLabel } = data;
       const totalC = totalH * hourly;
+
+      console.log("Invoice info:", { totalH, hourly, totalC, invoicePath });
 
       setInvSummary({
         path: invoicePath,
