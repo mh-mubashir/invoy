@@ -180,7 +180,12 @@ export default function App() {
   async function onSend() {
     if (!text.trim()) return
     setMsgs(m => [...m, <Message role="user" key={m.length}>{text.split('\n').map((l,i)=><div key={i}>{l}</div>)}</Message>])
+    const inputText = text
+    const inputClient = client
+    const inputHours = hours
     setText('')
+    setClient('')
+    setHours('')
     const loaderId = Date.now()
     setMsgs(m => [...m, <Message role="ai" key={loaderId}>
       <div className="flex items-center gap-3">
@@ -193,10 +198,10 @@ export default function App() {
       </div>
     </Message>])
     try {
-      const res = await fetch('/ai-invoice/allocate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ client: client || null, total_hours: hours ? parseFloat(hours) : null, freeform: text }) })
+      const res = await fetch('/ai-invoice/allocate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ client: inputClient || null, total_hours: inputHours ? parseFloat(inputHours) : null, freeform: inputText }) })
       const data = await res.json()
-      // Remove loader
-      setMsgs(m => m.filter(msg => msg.key !== loaderId))
+      // Remove loader immediately
+      setMsgs(m => m.filter((msg: any) => msg.key !== loaderId))
       
       const rows = (data.line_items||[]).map((li: any, idx: number) => (
         <tr key={idx} className="border-b last:border-b-0 border-slate-200 dark:border-slate-700">
@@ -229,8 +234,8 @@ export default function App() {
           Finalize & Generate Invoice
         </button>
       </Message>])
-    } catch {
-      setMsgs(m => m.filter(msg => msg.key !== loaderId))
+    } catch (err) {
+      setMsgs(m => m.filter((msg: any) => msg.key !== loaderId))
       setMsgs(m => [...m, <Message role="ai" key={Date.now()}>Allocation failed. Please try again.</Message>])
     }
   }

@@ -5,6 +5,10 @@ from .stt import transcribe_audio
 from .ai import allocate_hours
 from .utils import finalize_invoice
 from pathlib import Path
+from dotenv import load_dotenv
+
+# Load .env file from project root
+load_dotenv(Path(__file__).resolve().parents[1] / '.env')
 
 app = FastAPI(title="Invoy Backend", version="0.1.0")
 
