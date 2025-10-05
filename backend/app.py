@@ -1,5 +1,5 @@
-from fastapi import FastAPI, UploadFile, File, Form
-from fastapi.responses import JSONResponse
+from fastapi import FastAPI, UploadFile, File, Form, Request
+from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel
 from .stt import transcribe_audio
 from .ai import allocate_hours
@@ -12,7 +12,19 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 app.add_middleware(CORSMiddleware, allow_origins=['*'], allow_methods=['*'], allow_headers=['*'])
-app.mount('/ui', StaticFiles(directory=str(Path(__file__).resolve().parents[1] / 'web/dist'), html=True), name='ui')
+
+# No-cache for HTML to always serve fresh UI
+@app.middleware("http")
+async def no_cache_html(request: Request, call_next):
+    response: Response = await call_next(request)
+    path = request.url.path or "/"
+    if path.endswith(".html") or path == "/":
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        response.headers["Pragma"] = "no-cache"
+    return response
+
+# Serve built web app at root
+app.mount('/', StaticFiles(directory=str(Path(__file__).resolve().parents[1] / 'web' / 'dist'), html=True), name='root')
 
 
 class AllocateRequest(BaseModel):
