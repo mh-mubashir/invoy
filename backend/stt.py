@@ -1,48 +1,52 @@
-import io
-from fastapi import UploadFile
+import subprocess
+import wave
+import json
+import os
+from vosk import Model, KaldiRecognizer
 
-# Optional Vosk import guarded
-try:
-    from vosk import Model, KaldiRecognizer
-    import soundfile as sf
-    _VOSK_AVAILABLE = True
-except Exception:
-    _VOSK_AVAILABLE = False
+# Load Vosk model once globally
+model = Model("/home/hamza-ubuntu/Documents/Coding/invoy/vosk-model-small-en-us-0.15")
 
-_model = None
+def transcribe_audio(file_path: str) -> str:
+    """
+    Transcribes an audio file (webm, wav, mp3, etc.) to text using Vosk.
+    Converts to 16kHz mono WAV if needed.
 
-def _load_model():
-    global _model
-    if _model or not _VOSK_AVAILABLE:
-        return _model
-    try:
-        # Expect a small Vosk model placed in ./backend/models/vosk
-        import os
-        from pathlib import Path
-        model_path = Path(__file__).resolve().parent / 'models' / 'vosk'
-        if model_path.exists():
-            _model = Model(str(model_path))
-        return _model
-    except Exception:
-        return None
+    Args:
+        file_path: path to the uploaded audio file
 
-async def transcribe_audio(file: UploadFile) -> str:
-    data = await file.read()
-    # If Vosk not available or model missing, return a simple fallback notice
-    if not _VOSK_AVAILABLE or _load_model() is None:
-        return "[transcription unavailable in dev: received %d bytes of audio]" % len(data)
-    try:
-        # Decode with soundfile
-        buf = io.BytesIO(data)
-        audio, sr = sf.read(buf, dtype='int16')
-        rec = KaldiRecognizer(_model, sr)
-        import numpy as np
-        if audio.ndim == 2:
-            audio = audio.mean(axis=1).astype('int16')
-        chunk = audio.tobytes()
-        rec.AcceptWaveform(chunk)
-        import json
-        res = json.loads(rec.Result())
-        return res.get('text', '').strip() or '[no speech detected]'
-    except Exception:
-        return "[transcription failed]"
+    Returns:
+        str: transcribed text
+    """
+    # Ensure .wav format
+    print("Transcribing audio file:", file_path)
+    wav_path = file_path
+    if not file_path.endswith(".wav"):
+        wav_path = file_path.rsplit(".", 1)[0] + ".wav"
+        subprocess.run([
+            "ffmpeg", "-y", "-i", file_path,
+            "-ar", "16000", "-ac", "1", "-f", "wav", wav_path
+        ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+    wf = wave.open(wav_path, "rb")
+    rec = KaldiRecognizer(model, wf.getframerate())
+
+    text = ""
+    while True:
+        data = wf.readframes(4000)
+        if len(data) == 0:
+            break
+        if rec.AcceptWaveform(data):
+            result = json.loads(rec.Result())
+            text += result.get("text", "") + " "
+
+    final = json.loads(rec.FinalResult())
+    text += final.get("text", "")
+
+    wf.close()
+
+    # Clean up converted wav if needed
+    if wav_path != file_path:
+        os.remove(wav_path)
+
+    return text.strip()
