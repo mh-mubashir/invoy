@@ -4,6 +4,7 @@ from pydantic import BaseModel
 from .stt import transcribe_audio
 from .ai import allocate_hours
 from .utils import finalize_invoice
+from pathlib import Path
 
 app = FastAPI(title="Invoy Backend", version="0.1.0")
 
@@ -11,7 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 app.add_middleware(CORSMiddleware, allow_origins=['*'], allow_methods=['*'], allow_headers=['*'])
-app.mount('/ui', StaticFiles(directory=str(Path(__file__).resolve().parents[1] / 'frontend'), html=True), name='ui')
+app.mount('/ui', StaticFiles(directory=str(Path(__file__).resolve().parents[1] / 'web/dist'), html=True), name='ui')
 
 
 class AllocateRequest(BaseModel):

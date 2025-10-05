@@ -29,11 +29,9 @@ def _heuristic_parse_freeform(text: str) -> Dict:
     m = re.search(r"(\d+(?:\.\d+)?)\s*(?:h|hrs|hours)", text, re.I)
     total = float(m.group(1)) if m else 0.0
     # Split subjects by lines or punctuation
-    lines = [s.strip(" -•
-	") for s in re.split(r"[
-;]", text) if s.strip()]
+    lines = [s.strip(" -•\n\t") for s in re.split(r"[\n;]", text) if s.strip()]
     # Remove lines that look like hours mention
-    subjects = [l for l in lines if not re.search(r"hours?", l, re.I)]
+    subjects = [l for l in lines if not re.search(r"\bhours?\b", l, re.I)]
     subjects = subjects[:10] if subjects else [text[:60] + ('…' if len(text) > 60 else '')]
     return {"client_name": None, "total_hours_billed": total, "subjects": subjects}
 
@@ -57,23 +55,14 @@ async def parse_freeform_with_claude(freeform: str, default_client: Optional[str
 
     client = anthropic.Anthropic()
     prompt = (
-        SCHEMA_INSTRUCTIONS + "
-
-" +
-        "Freeform input:
-" + freeform + "
-
-" +
-        "Constraints:
-- Sum of estimated_hours must equal total_hours_billed.
-- JSON only, no prose.
-" +
-        "If client name or total hours are missing, infer from context or set to defaults.
-" +
-        f"Defaults: client={default_client or 'Unknown Client'}, total_hours={default_hours or 0.0}.
-" +
-        "JSON schema keys: client_name, total_hours_billed, billing_period, line_items[{subject, estimated_hours, justification}], confidence.
-"
+        SCHEMA_INSTRUCTIONS + "\n\n"
+        + "Freeform input:\n" + freeform + "\n\n"
+        + "Constraints:\n"
+        + "- Sum of estimated_hours must equal total_hours_billed.\n"
+        + "- JSON only, no prose.\n"
+        + "If client name or total hours are missing, infer from context or set to defaults.\n"
+        + f"Defaults: client={default_client or 'Unknown Client'}, total_hours={default_hours or 0.0}.\n"
+        + "JSON schema keys: client_name, total_hours_billed, billing_period, line_items[{subject, estimated_hours, justification}], confidence.\n"
     )
     resp = client.messages.create(
         model=os.getenv('ANTHROPIC_MODEL', 'claude-3-5-sonnet-20240620'),
