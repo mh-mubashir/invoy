@@ -58,11 +58,11 @@ function Message({ role, children }: { role: 'user' | 'ai', children: React.Reac
     <div className="w-full">
       <div className={`max-w-3xl mx-auto flex items-start gap-3 px-3 py-3 ${isUser ? 'justify-end' : ''}`}>
         {!isUser && (
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-900 text-white shadow-sm">AI</div>
+          <img src={logoUrl} alt="Invoy" className="h-9 w-9 rounded-xl object-cover shadow-sm flex-shrink-0" />
         )}
-        <div className={`${isUser ? 'bg-sky-500 text-white rounded-2xl rounded-tr-sm' : 'bg-white dark:bg-slate-800 dark:text-slate-100 text-slate-900 rounded-2xl rounded-tl-sm border border-slate-200 dark:border-slate-700'} shadow-sm px-4 py-3 max-w-[720px] leading-relaxed`}>{children}</div>
+        <div className={`${isUser ? 'bg-sky-500 text-white rounded-2xl rounded-tr-sm' : 'bg-white dark:bg-slate-800 dark:text-slate-100 text-slate-900 rounded-2xl rounded-tl-sm border border-slate-200 dark:border-slate-700'} shadow-sm px-4 py-3 max-w-[720px] leading-relaxed max-h-[500px] overflow-y-auto`}>{children}</div>
         {isUser && (
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-sky-500 text-white shadow-sm">You</div>
+          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-sky-500 text-white shadow-sm flex-shrink-0">You</div>
         )}
       </div>
     </div>
@@ -149,31 +149,37 @@ export default function App() {
         }) 
       })
       const data = await res.json()
-      setMsgs(m => [...m, <Message role="ai" key={m.length}>
-        <div className="space-y-3">
-          <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-semibold">
-            <span className="text-xl">✅</span>
-            <span>Invoice Generated Successfully</span>
+      setMsgs(m => [...m, <Message role="ai" key={Date.now()}>
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 pb-3 border-b border-slate-200 dark:border-slate-700">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-600 text-white shadow-lg">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
+            </div>
+            <div>
+              <div className="font-semibold text-slate-900 dark:text-slate-100 text-base">Invoice Generated</div>
+              <div className="text-xs text-slate-500 dark:text-slate-400">Ready for preview and delivery</div>
+            </div>
           </div>
-          <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-            <div className="text-slate-600 dark:text-slate-400">Client</div>
+          <div className="grid grid-cols-[auto,1fr] gap-x-4 gap-y-2.5 text-sm">
+            <div className="text-slate-500 dark:text-slate-400">Client</div>
             <div className="text-slate-900 dark:text-slate-100 font-medium">{data.client_name}</div>
-            <div className="text-slate-600 dark:text-slate-400">Billing Period</div>
+            <div className="text-slate-500 dark:text-slate-400">Period</div>
             <div className="text-slate-900 dark:text-slate-100 font-medium">{data.billing_period}</div>
-            <div className="text-slate-600 dark:text-slate-400">Total Hours</div>
+            <div className="text-slate-500 dark:text-slate-400">Hours</div>
             <div className="text-slate-900 dark:text-slate-100 font-medium">{data.total_hours.toFixed(1)}</div>
-            <div className="text-slate-600 dark:text-slate-400">Total Cost</div>
-            <div className="text-slate-900 dark:text-slate-100 font-medium">${data.total_cost.toFixed(2)}</div>
-            <div className="text-slate-600 dark:text-slate-400">Invoice ID</div>
-            <div className="text-slate-900 dark:text-slate-100 font-mono text-xs">{data.invoice_id}</div>
+            <div className="text-slate-500 dark:text-slate-400">Amount</div>
+            <div className="text-slate-900 dark:text-slate-100 font-semibold text-base">${data.total_cost.toFixed(2)}</div>
+            <div className="text-slate-500 dark:text-slate-400">Invoice ID</div>
+            <div className="text-slate-700 dark:text-slate-300 font-mono text-xs">{data.invoice_id}</div>
           </div>
-          <button onClick={()=>setPreviewUrl(data.path)} className="w-full rounded-lg px-4 py-2.5 bg-sky-500 hover:bg-sky-600 text-white font-semibold shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2">
-            <span>👁️</span> View Invoice
+          <button onClick={()=>setPreviewUrl(data.path)} className="w-full rounded-xl px-4 py-3 bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-600 hover:to-blue-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+            View Invoice
           </button>
         </div>
       </Message>])
     } catch {
-      setMsgs(m => [...m, <Message role="ai" key={m.length}>Failed to finalize invoice.</Message>])
+      setMsgs(m => [...m, <Message role="ai" key={Date.now()}>Failed to finalize invoice.</Message>])
     }
   }
 
@@ -200,8 +206,6 @@ export default function App() {
     try {
       const res = await fetch('/ai-invoice/allocate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ client: inputClient || null, total_hours: inputHours ? parseFloat(inputHours) : null, freeform: inputText }) })
       const data = await res.json()
-      // Remove loader immediately
-      setMsgs(m => m.filter((msg: any) => msg.key !== loaderId))
       
       const rows = (data.line_items||[]).map((li: any, idx: number) => (
         <tr key={idx} className="border-b last:border-b-0 border-slate-200 dark:border-slate-700">
@@ -210,33 +214,34 @@ export default function App() {
           <td className="py-2 pl-3 text-right font-semibold">{(li.estimated_hours || 0).toFixed(1)}</td>
         </tr>
       ))
-      setMsgs(m => [...m, <Message role="ai" key={Date.now()}>
-        <div className="text-sm text-slate-600 dark:text-slate-300 mb-3">
-          <span className="font-medium text-slate-900 dark:text-slate-100">{data.client_name || 'Unknown Client'}</span>
-          <span className="mx-2 text-slate-400">•</span>
-          Total <span className="font-medium text-slate-900 dark:text-slate-100">{(data.total_hours_billed || 0).toFixed(1)}h</span>
-          <span className="mx-2 text-slate-400">•</span>
-          <span className="text-xs">Confidence: {((data.confidence || 0) * 100).toFixed(0)}%</span>
+      // Remove loader and add response in one update
+      setMsgs(m => [...m.filter((msg: any) => msg.key !== loaderId), <Message role="ai" key={Date.now()}>
+        <div className="space-y-3">
+          <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-700">
+            <div>
+              <div className="font-semibold text-slate-900 dark:text-slate-100">{data.client_name || 'Unknown Client'}</div>
+              <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Total: {(data.total_hours_billed || 0).toFixed(1)}h • Confidence: {((data.confidence || 0) * 100).toFixed(0)}%</div>
+            </div>
+          </div>
+          <div className="max-h-[280px] overflow-y-auto rounded-xl border border-slate-200 dark:border-slate-700">
+            <table className="w-full text-sm">
+              <thead className="bg-slate-50 dark:bg-slate-900/60 text-slate-700 dark:text-slate-200 sticky top-0">
+                <tr>
+                  <th className="text-left py-2.5 px-3 font-medium">Subject</th>
+                  <th className="text-left py-2.5 px-3 font-medium">Justification</th>
+                  <th className="text-right py-2.5 px-3 font-medium w-20">Hours</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white dark:bg-slate-800">{rows}</tbody>
+            </table>
+          </div>
+          <button onClick={()=>finalizeInvoice(data)} className="w-full rounded-xl px-4 py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all">
+            Finalize & Generate Invoice
+          </button>
         </div>
-        <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 mb-3">
-          <table className="w-full text-sm">
-            <thead className="bg-slate-50/80 dark:bg-slate-900/40 text-slate-700 dark:text-slate-200">
-              <tr>
-                <th className="text-left py-2 px-3">Subject</th>
-                <th className="text-left py-2 px-3">Justification</th>
-                <th className="text-right py-2 px-3 w-24">Hours</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white dark:bg-slate-800">{rows}</tbody>
-          </table>
-        </div>
-        <button onClick={()=>finalizeInvoice(data)} className="w-full rounded-lg px-4 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold shadow-md hover:shadow-lg transition-all">
-          Finalize & Generate Invoice
-        </button>
       </Message>])
     } catch (err) {
-      setMsgs(m => m.filter((msg: any) => msg.key !== loaderId))
-      setMsgs(m => [...m, <Message role="ai" key={Date.now()}>Allocation failed. Please try again.</Message>])
+      setMsgs(m => [...m.filter((msg: any) => msg.key !== loaderId), <Message role="ai" key={Date.now()}>Allocation failed. Please try again.</Message>])
     }
   }
 
