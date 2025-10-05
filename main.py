@@ -5,12 +5,12 @@ from fastapi.templating import Jinja2Templates
 from src.calendar.routes import router as calendar_router
 
 app = FastAPI()
-templates = Jinja2Templates(directory="pages")
+templates = Jinja2Templates(directory="templates")
 
 app = FastAPI(title="Google Calendar Integration API")
 
 # Serve static files
-app.mount("/static", StaticFiles(directory="static"), name="static")
+app.mount("/assets", StaticFiles(directory="assets"), name="assets")
 
 # Register routes
 app.include_router(calendar_router, prefix="", tags=["Calendar"])
