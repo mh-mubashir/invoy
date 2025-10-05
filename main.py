@@ -5,9 +5,16 @@ from fastapi import FastAPI, Request, Query
 from fastapi.responses import RedirectResponse, JSONResponse
 from google_auth_oauthlib.flow import Flow
 from dotenv import load_dotenv
+from db_handler import DbHandler
+
+from fastapi import FastAPI, HTTPException, Request
+from google.oauth2 import id_token
+from google.auth.transport import requests as google_requests
 
 # Load environment variables
 load_dotenv()
+
+db = DbHandler()
 
 app = FastAPI(title="Google Calendar Integration API")
 
@@ -27,6 +34,15 @@ SCOPES = [
 @app.get("/auth/login")
 def login():
     """Redirect user to Google OAuth consent screen."""
+    user_info = db.get_last_token()
+    if user_info is not None:
+        print("User already logged in:", user_info['email'])
+        return JSONResponse({
+            "message": "User already logged in",
+            "user": user_info
+        })
+    
+    print("Login endpoint hit")
     flow = Flow.from_client_config(
         {
             "web": {
@@ -51,6 +67,8 @@ def login():
 @app.get("/auth/callback")
 def callback(request: Request):
     """Handle Google callback, exchange code for access token."""
+    print("Callback endpoint hit")
+    
     code = request.query_params.get("code")
 
     flow = Flow.from_client_config(
@@ -73,6 +91,10 @@ def callback(request: Request):
         "https://www.googleapis.com/oauth2/v2/userinfo",
         headers={"Authorization": f"Bearer {credentials.token}"}
     ).json()
+
+    db.save_tokens(email=user_info['email'], access_token=credentials.token,
+                   refresh_token=credentials.refresh_token, 
+                   expiry=credentials.expiry.isoformat())
 
     return JSONResponse({
         "message": "Login successful!",
