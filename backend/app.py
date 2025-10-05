@@ -55,7 +55,7 @@ async def stt_endpoint(file: UploadFile = File(...)):
         f.write(await file.read())
         print("Saved uploaded file to:", temp_path)
     #Call the transcription function
-    text = transcribe_audio(file)
+    text = transcribe_audio(temp_path)
 
     # Remove temp file
     os.remove(temp_path)
