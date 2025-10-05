@@ -33,3 +33,4 @@ celerybeat-schedule
 .coverage.*
 nosetests.xml
 coverage.xml
+vosk-model-small-en-us-0.15/
