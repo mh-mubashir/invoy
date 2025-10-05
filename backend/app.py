@@ -12,6 +12,10 @@ from fastapi.templating import Jinja2Templates
 from backend.calender_routes import router as calendar_router
 
 templates = Jinja2Templates(directory="templates")
+from dotenv import load_dotenv
+
+# Load .env file from project root
+load_dotenv(Path(__file__).resolve().parents[1] / '.env')
 
 app = FastAPI(title="Invoy Backend", version="0.1.0")
 
@@ -39,10 +43,6 @@ async def no_cache_html(request: Request, call_next):
         response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
         response.headers["Pragma"] = "no-cache"
     return response
-
-# Serve built web app at root
-app.mount('/', StaticFiles(directory=str(Path(__file__).resolve().parents[1] / 'web' / 'dist'), html=True), name='root')
-
 
 class AllocateRequest(BaseModel):
     client: str | None = None
@@ -74,3 +74,13 @@ class FinalizeRequest(BaseModel):
 async def finalize(req: FinalizeRequest):
     out = finalize_invoice(req.client, req.line_items, req.billing_period)
     return out
+
+# Mount static files AFTER API routes so they don't intercept API calls
+# Serve project assets folder for logo (use different path to avoid conflict with Vite /assets)
+app.mount('/static', StaticFiles(directory=str(Path(__file__).resolve().parents[1] / 'assets')), name='static')
+
+# Serve output folder for invoice previews
+app.mount('/invoices', StaticFiles(directory=str(Path(__file__).resolve().parents[1] / 'output')), name='invoices')
+
+# Serve built web app at root (catch-all, must be last)
+app.mount('/', StaticFiles(directory=str(Path(__file__).resolve().parents[1] / 'web' / 'dist'), html=True), name='root')

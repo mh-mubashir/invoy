@@ -31,9 +31,22 @@ def finalize_invoice(client: str, line_items: List[Dict], billing_period: str | 
     tax_rate = float(consultant.get('taxRate', 0.0))
     tax_amount = round(subtotal * tax_rate, 2)
     total_due = round(subtotal + tax_amount, 2)
-    invoice = { 'invoiceId': f"AI-{client.replace('@','_').replace('.','-')}", 'issueDate': __import__('datetime').date.today().isoformat(), 'billingPeriod': billing_period or 'Monthly' }
-    html = tmpl.render(consultant=consultant, branding=branding, client={'name': client, 'email': ''}, invoice=invoice, aiSummary='AI-assisted allocation from freeform input', items=items, totals={'subtotal': subtotal, 'taxAmount': tax_amount, 'totalDue': total_due}, currencySymbol={'USD':'$','EUR':'€','GBP':'£'}.get(consultant['currency'], ''))
+    invoice_id = f"AI-{client.replace('@','_').replace('.','-').replace(' ','-')}"
+    import datetime
+    invoice = { 'invoiceId': invoice_id, 'issueDate': datetime.date.today().isoformat(), 'billingPeriod': billing_period or 'Monthly' }
+    total_hours = sum(i['hours'] for i in items)
+    html = tmpl.render(consultant=consultant, branding=branding, client={'name': client, 'email': ''}, invoice=invoice, aiSummary=f'AI-assisted allocation from freeform input on {invoice["issueDate"]}', items=items, totals={'subtotal': subtotal, 'taxAmount': tax_amount, 'totalDue': total_due}, currencySymbol={'USD':'$','EUR':'€','GBP':'£'}.get(consultant['currency'], ''))
     OUTPUT.mkdir(parents=True, exist_ok=True)
-    out = OUTPUT / f"{invoice['invoiceId']}.html"
+    out = OUTPUT / f"{invoice_id}.html"
     out.write_text(html)
-    return {'status':'ok','path': str(out), 'total_due': total_due}
+    # Return full metadata for frontend
+    return {
+        'status':'ok',
+        'invoice_id': invoice_id,
+        'path': f'/invoices/{invoice_id}.html',
+        'client_name': client,
+        'total_hours': round(total_hours, 2),
+        'total_cost': total_due,
+        'billing_period': billing_period or 'Monthly',
+        'line_items': line_items
+    }
