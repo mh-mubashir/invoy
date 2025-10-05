@@ -114,7 +114,7 @@ def load_credentials(email: str):
     if not user:
         raise Exception(f"No tokens found for {email}. Please authenticate first.")
     db.close()
-
+    print(f"🔹 Loading tokens for {email}...")
     creds_data = {
         "token": user.access_token,
         "refresh_token": user.refresh_token,
@@ -153,32 +153,94 @@ def get_calendar_events(
     email: str = Query(None, description="User email to fetch calendar"),
     month: int = Query(None, description="Month number (1-12)"),
     year: int = Query(None, description="Year"),
+    attendee_email: str = Query(None, description="Filter by attendee email"),
+    save_to_file: bool = Query(True, description="Save results to events.txt")
 ):
     try:
-        creds = load_credentials(email)
-        headers = {"Authorization": f"Bearer {creds.token}"}
+        credentials = load_credentials(email)
+        headers = {"Authorization": f"Bearer {credentials.token}"}
 
         now = datetime.utcnow()
         month = month or now.month
         year = year or now.year
+
         time_min = datetime(year, month, 1).isoformat() + "Z"
         time_max = (
             datetime(year + 1, 1, 1).isoformat() + "Z"
-            if month == 12 else datetime(year, month + 1, 1).isoformat() + "Z"
+            if month == 12
+            else datetime(year, month + 1, 1).isoformat() + "Z"
         )
+        print(f"📅 [CALENDAR] Fetching events for {month}/{year}...")
 
         params = {"timeMin": time_min, "timeMax": time_max, "singleEvents": True, "orderBy": "startTime"}
-        resp = requests.get("https://www.googleapis.com/calendar/v3/calendars/primary/events",
-                            headers=headers, params=params)
+        response = requests.get(
+            "https://www.googleapis.com/calendar/v3/calendars/primary/events",
+            headers=headers,
+            params=params
+        )
 
-        if resp.status_code != 200:
-            print("❌ Google Calendar API failed:", resp.text)
-            return {"error": resp.text}
+        if response.status_code != 200:
+            print("❌ [ERROR] Calendar API failed:", response.text)
+            return {"error": "Failed to fetch events", "details": response.text}
 
-        events = resp.json().get("items", [])
-        print(f"📅 Retrieved {len(events)} events for {email}")
-        return {"email": email, "count": len(events), "events": events}
+        events = response.json().get("items", [])
+        print(f"✅ [CALENDAR] Retrieved {len(events)} total events.")
+
+        # # Removed Filtering for business-related events for broader use case
+        # keywords = ["meeting", "business", "sync", "client", "review", "kickoff"]
+        # filtered = [e for e in events if any(kw in e.get("summary", "").lower() for kw in keywords)]
+        
+        filtered = events
+        print(f"🔹 [FILTER] Found {len(filtered)} business-related events.")
+
+        if attendee_email:
+            filtered = [
+                e for e in filtered
+                if "attendees" in e and any(
+                    attendee_email.lower() in a.get("email", "").lower()
+                    for a in e["attendees"]
+                )
+            ]
+            print(f"🔹 [FILTER] After attendee filter: {len(filtered)} events remain.")
+
+        print(f"filtered events: {filtered}")
+        if save_to_file:
+            event_data = [] # Prepare a list to store event data
+            attendees_list = []
+            for ev in filtered: # Process each event
+                attendees = ev.get("attendees", [])
+                if attendees:
+                    attendees_list = [
+                        {
+                            "displayName": a.get("displayName", ""),
+                            "email": a.get("email", "")
+                        }
+                        for a in attendees
+                    ]
+                event = {
+                    "id": ev.get('id', ''),
+                    "title": ev.get('summary', ''),
+                    "description": ev.get('description', ''),
+                    "start": ev.get("start", {}).get("dateTime", ev.get("start", {}).get("date")),
+                    "end": ev.get("end", {}).get("dateTime", ev.get("end", {}).get("date")),
+                    "status": ev.get('status', ''),
+                    "attendees": attendees_list
+                }
+                event_data.append(event)
+
+            # Write to JSON file (compact format)
+            with open('events.json', 'w') as f:
+                json.dump(event_data, f, separators=(',', ':'))
+            print(f"💾 [WRITE] Saved {len(filtered)} events to events.txt")
+
+        return {
+            "total": len(filtered),
+            "saved_to": "events.txt" if save_to_file else None,
+            "filters": {"month": month, "year": year, "attendee_email": attendee_email},
+            "events": filtered
+        }
 
     except Exception as e:
-        print("❌ Error fetching events:", e)
-        return {"error": str(e)}
+        print("❌ [ERROR] Calendar event fetch failed:", e)
+        return JSONResponse({"error": str(e)}, status_code=500)
+
