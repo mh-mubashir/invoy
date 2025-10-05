@@ -5,13 +5,6 @@ from .stt import transcribe_audio
 from .ai import allocate_hours
 from .utils import finalize_invoice
 from pathlib import Path
-from fastapi.templating import Jinja2Templates
-from fastapi.responses import HTMLResponse
-from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
-from backend.calender_routes import router as calendar_router
-
-templates = Jinja2Templates(directory="templates")
 from dotenv import load_dotenv
 
 # Load .env file from project root
@@ -19,20 +12,10 @@ load_dotenv(Path(__file__).resolve().parents[1] / '.env')
 
 app = FastAPI(title="Invoy Backend", version="0.1.0")
 
-app.mount("/assets", StaticFiles(directory="assets"), name="assets")
-
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 app.add_middleware(CORSMiddleware, allow_origins=['*'], allow_methods=['*'], allow_headers=['*'])
-
-# Register routes
-app.include_router(calendar_router, prefix="", tags=["Calendar"])
-
-# Example route to render the login page
-@app.get("/", response_class=HTMLResponse)
-async def get_login_page(request: Request):
-    return templates.TemplateResponse("login.html", {"request": request})
 
 # No-cache for HTML to always serve fresh UI
 @app.middleware("http")
@@ -74,6 +57,20 @@ class FinalizeRequest(BaseModel):
 async def finalize(req: FinalizeRequest):
     out = finalize_invoice(req.client, req.line_items, req.billing_period)
     return out
+
+class SendEmailRequest(BaseModel):
+    invoice_id: str
+    recipient_email: str
+    invoice_data: dict
+
+@app.post("/ai-invoice/send-email")
+async def send_email(req: SendEmailRequest):
+    from .email import send_invoice_email
+    from pathlib import Path
+    ROOT = Path(__file__).resolve().parents[1]
+    pdf_path = str(ROOT / 'output' / f"{req.invoice_id}.pdf")
+    result = await send_invoice_email(req.invoice_data, pdf_path, req.recipient_email, req.invoice_data.get('consultant_email', ''))
+    return result
 
 # Mount static files AFTER API routes so they don't intercept API calls
 # Serve project assets folder for logo (use different path to avoid conflict with Vite /assets)

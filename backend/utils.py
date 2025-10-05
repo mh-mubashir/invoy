@@ -35,15 +35,41 @@ def finalize_invoice(client: str, line_items: List[Dict], billing_period: str | 
     import datetime
     invoice = { 'invoiceId': invoice_id, 'issueDate': datetime.date.today().isoformat(), 'billingPeriod': billing_period or 'Monthly' }
     total_hours = sum(i['hours'] for i in items)
-    html = tmpl.render(consultant=consultant, branding=branding, client={'name': client, 'email': ''}, invoice=invoice, aiSummary=f'AI-assisted allocation from freeform input on {invoice["issueDate"]}', items=items, totals={'subtotal': subtotal, 'taxAmount': tax_amount, 'totalDue': total_due}, currencySymbol={'USD':'$','EUR':'€','GBP':'£'}.get(consultant['currency'], ''))
+    
+    # Generate informative AI summary
+    num_tasks = len(items)
+    task_list = ', '.join([i['subject'][:30] + ('...' if len(i['subject']) > 30 else '') for i in items[:3]])
+    if num_tasks > 3:
+        task_list += f', and {num_tasks - 3} more'
+    ai_summary = f'This invoice covers {num_tasks} task{"s" if num_tasks != 1 else ""} totaling {total_hours:.1f} hours of work for {client}. Key areas: {task_list}. Generated using AI-assisted allocation on {invoice["issueDate"]}.'
+    
+    html = tmpl.render(consultant=consultant, branding=branding, client={'name': client, 'email': ''}, invoice=invoice, aiSummary=ai_summary, items=items, totals={'subtotal': subtotal, 'taxAmount': tax_amount, 'totalDue': total_due}, currencySymbol={'USD':'$','EUR':'€','GBP':'£'}.get(consultant['currency'], ''))
     OUTPUT.mkdir(parents=True, exist_ok=True)
-    out = OUTPUT / f"{invoice_id}.html"
-    out.write_text(html)
+    out_html = OUTPUT / f"{invoice_id}.html"
+    out_html.write_text(html)
+    
+    # Generate PDF using WeasyPrint
+    out_pdf = OUTPUT / f"{invoice_id}.pdf"
+    try:
+        from weasyprint import HTML
+        import base64
+        # Embed logo as base64 in HTML for PDF
+        logo_path = ROOT / 'assets' / 'logo.png'
+        if logo_path.exists():
+            logo_b64 = base64.b64encode(logo_path.read_bytes()).decode('utf-8')
+            html = html.replace('/static/logo.png', f'data:image/png;base64,{logo_b64}')
+        HTML(string=html, base_url=str(ROOT)).write_pdf(str(out_pdf))
+    except Exception as e:
+        print(f"PDF generation failed: {e}")
+        # Fallback: PDF path points to HTML
+        out_pdf = out_html
+    
     # Return full metadata for frontend
     return {
         'status':'ok',
         'invoice_id': invoice_id,
         'path': f'/invoices/{invoice_id}.html',
+        'pdf_path': f'/invoices/{invoice_id}.pdf',
         'client_name': client,
         'total_hours': round(total_hours, 2),
         'total_cost': total_due,

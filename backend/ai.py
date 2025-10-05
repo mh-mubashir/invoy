@@ -112,3 +112,63 @@ async def allocate_hours(client: str, total_hours: float, subjects: List[str], b
         return {"client_name": client, "total_hours_billed": float(total_hours), "billing_period": billing_period or "Monthly", "line_items": items, "confidence": 0.4}
     # No subjects provided: treat `client` as default client, and `total_hours` may be 0; expect caller to pass freeform in 'client' or separate param.
     return {"client_name": client, "total_hours_billed": float(total_hours), "billing_period": billing_period or "Monthly", "line_items": [], "confidence": 0.0}
+
+
+async def generate_email_body(invoice_data: Dict) -> str:
+    """Generate personalized email body for invoice delivery using Claude"""
+    if not _CLAUDE or not os.getenv('ANTHROPIC_API_KEY'):
+        # Fallback email template
+        return f"""
+<html>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1f2937; line-height: 1.6;">
+    <p>Hi {invoice_data.get('client_name', 'there')},</p>
+    
+    <p>I hope this message finds you well! I wanted to share the invoice for our recent work together during {invoice_data.get('billing_period', 'this period')}.</p>
+    
+    <p>It was a pleasure working on these projects with you. I'm really proud of what we accomplished together, and I'm looking forward to continuing our collaboration.</p>
+    
+    <p><strong>Invoice Summary:</strong><br>
+    Total Hours: {invoice_data.get('total_hours', 0):.1f}<br>
+    Total Amount: ${invoice_data.get('total_cost', 0):.2f}</p>
+    
+    <p>Please find the detailed invoice attached. If you have any questions or need clarification on any items, don't hesitate to reach out.</p>
+    
+    <p>Looking forward to our next project!</p>
+    
+    <p>Best regards,<br>
+    {invoice_data.get('consultant_name', 'Your Consultant')}</p>
+</body>
+</html>
+"""
+    
+    # Use Claude to generate personalized email
+    client_api = anthropic.Anthropic()
+    prompt = f"""Write a warm, professional email to send an invoice to a client. 
+
+Context:
+- Client: {invoice_data.get('client_name')}
+- Billing Period: {invoice_data.get('billing_period')}
+- Total Hours: {invoice_data.get('total_hours')} 
+- Total Cost: ${invoice_data.get('total_cost')}
+- Work done: {len(invoice_data.get('line_items', []))} distinct tasks
+
+Tone: Professional yet warm and personable, as if you personally worked with them and value the relationship.
+Key points to include:
+- Thank them for the opportunity to work together
+- Briefly mention the amazing work accomplished
+- Reference the attached invoice
+- Express enthusiasm for continuing the partnership
+- Keep it concise (3-4 short paragraphs)
+
+Return ONLY the HTML email body (no subject, no greetings like "Subject:"). Use simple HTML formatting."""
+
+    resp = client_api.messages.create(
+        model=os.getenv('ANTHROPIC_MODEL', 'claude-3-5-sonnet-20240620'),
+        max_tokens=500,
+        temperature=0.3,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    
+    email_html = resp.content[0].text if getattr(resp, 'content', None) else ''
+    return email_html if email_html else f"Please find attached invoice {invoice_data.get('invoice_id')} for {invoice_data.get('client_name')}."
+

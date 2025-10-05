@@ -1,9 +1,3 @@
-# invoy
-
-Run command 
-
-`uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload`
-
 # Invoy AI - Automated Invoice Generation
 
 AI-powered invoice generation from Google Calendar or freeform text descriptions.
@@ -42,9 +36,11 @@ cd ..
 
 ### 3. Configure API keys
 ```bash
-# Copy example and add your Anthropic API key
+# Copy example and add your API keys
 cp env.example .env
-# Edit .env and add: ANTHROPIC_API_KEY=sk-ant-api03-...
+# Edit .env and add:
+# ANTHROPIC_API_KEY=sk-ant-api03-...  (from https://console.anthropic.com/)
+# RESEND_API_KEY=re_...  (from https://resend.com/api-keys - free tier: 3k emails/month)
 ```
 
 ### 4. Configure consultant settings
