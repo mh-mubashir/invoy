@@ -59,6 +59,9 @@ async def finalize(req: FinalizeRequest):
     return out
 
 # Mount static files AFTER API routes so they don't intercept API calls
+# Serve project assets folder for logo (use different path to avoid conflict with Vite /assets)
+app.mount('/static', StaticFiles(directory=str(Path(__file__).resolve().parents[1] / 'assets')), name='static')
+
 # Serve output folder for invoice previews
 app.mount('/invoices', StaticFiles(directory=str(Path(__file__).resolve().parents[1] / 'output')), name='invoices')
 

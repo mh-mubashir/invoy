@@ -383,7 +383,7 @@ export default function App() {
           </div>
 
           {/* Right: invoice preview panel */}
-          <aside className="w-[420px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-lg flex-shrink-0 overflow-hidden flex flex-col">
+          <aside className="w-[540px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-lg flex-shrink-0 overflow-hidden flex flex-col">
             <div className="px-6 py-5 border-b border-slate-200 dark:border-slate-800">
               <div className="text-slate-900 dark:text-slate-100 font-semibold text-lg">Invoice Preview</div>
               <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">Live preview of generated invoice</div>
