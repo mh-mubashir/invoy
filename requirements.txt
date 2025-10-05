@@ -16,3 +16,4 @@ python-dotenv
 python-multipart
 weasyprint==62.3
 resend==2.4.0
+vosk==0.3.45

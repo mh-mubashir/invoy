@@ -28,10 +28,9 @@ app.add_middleware(CORSMiddleware, allow_origins=['*'], allow_methods=['*'], all
 # Register routes
 app.include_router(calendar_router, prefix="", tags=["Calendar"])
 
-# app.mount("/assets", StaticFiles(directory="assets"), name="assets")
-# @app.get("/", response_class=HTMLResponse)
-# async def get_login_page(request: Request):
-#     return templates.TemplateResponse("login.html", {"request": request})
+@app.get("/login", response_class=HTMLResponse)
+async def get_login_page(request: Request):
+    return templates.TemplateResponse("login.html", {"request": request})
 
 # No-cache for HTML to always serve fresh UI
 @app.middleware("http")
