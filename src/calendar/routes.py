@@ -106,7 +106,11 @@ def callback(request: Request):
 # ---------- TOKEN HELPER ----------
 def load_credentials(email: str):
     db = SessionLocal()
-    user = db.query(UserToken).filter(UserToken.email == email).first()
+    if email is None:
+        user = db.query(UserToken).order_by(UserToken.id.desc()).first()
+        email = user.email
+    else:
+        user = db.query(UserToken).filter(UserToken.email == email).first()
     if not user:
         raise Exception(f"No tokens found for {email}. Please authenticate first.")
     db.close()
@@ -119,6 +123,8 @@ def load_credentials(email: str):
         "client_secret": user.client_secret,
         "scopes": json.loads(user.scopes),
     }
+    print(f"♻️ Loading credentials for {creds_data}...")
+
     creds = Credentials.from_authorized_user_info(creds_data)
 
     if not creds.valid:
@@ -141,7 +147,7 @@ def load_credentials(email: str):
 # ---------- CALENDAR ----------
 @router.get("/calendar/events")
 def get_calendar_events(
-    email: str = Query(..., description="User email to fetch calendar"),
+    email: str = Query(None, description="User email to fetch calendar"),
     month: int = Query(None, description="Month number (1-12)"),
     year: int = Query(None, description="Year"),
 ):
