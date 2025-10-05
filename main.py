@@ -7,6 +7,7 @@ from fastapi.responses import RedirectResponse, JSONResponse
 from google_auth_oauthlib.flow import Flow
 from google.oauth2.credentials import Credentials
 from dotenv import load_dotenv
+from db_handler import DB_Handler
 
 # ------------------------- LOAD ENVIRONMENT -------------------------
 load_dotenv()
@@ -17,6 +18,7 @@ CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
 REDIRECT_URI = os.getenv("REDIRECT_URI")
 TOKEN_FILE = "tokens.json"
+db = DB_Handler()
 
 SCOPES = [
     "https://www.googleapis.com/auth/calendar.readonly",
@@ -95,8 +97,10 @@ def callback(request: Request):
             "expiry": credentials.expiry.isoformat()
         }
 
-        with open(TOKEN_FILE, "w", encoding="utf-8") as f:
-            json.dump(token_data, f, indent=4)
+        # with open(TOKEN_FILE, "w", encoding="utf-8") as f:
+        #     json.dump(token_data, f, indent=4)
+
+        db.save_token(token_data)
         print("💾 [CALLBACK] Tokens saved to tokens.json")
 
         # Fetch user info
@@ -120,11 +124,12 @@ def callback(request: Request):
 def load_credentials():
     """Load saved credentials and refresh if expired."""
     try:
-        if not os.path.exists(TOKEN_FILE):
-            raise Exception("You need to authenticate first at /auth/login")
+        # if not os.path.exists(TOKEN_FILE):
+        #     raise Exception("You need to authenticate first at /auth/login")
+        # with open(TOKEN_FILE, "r") as f:
+        #     data = json.load(f)
 
-        with open(TOKEN_FILE, "r") as f:
-            data = json.load(f)
+        data = db.get_last_token()
 
         creds = Credentials.from_authorized_user_info(data)
         print("🔹 [TOKEN] Loaded credentials from tokens.json")

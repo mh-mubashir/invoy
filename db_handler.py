@@ -1,95 +1,99 @@
 import sqlite3
-import datetime
-from pathlib import Path
+import json
+from datetime import datetime
 
-class DbHandler:
-    def __init__(self, db_path: str = "invoy.db"):
-        self.db_path = Path(db_path)
-        self._ensure_db()
 
-    def _connect(self):
-        """Create a connection to the SQLite DB."""
-        return sqlite3.connect(self.db_path)
+class DB_Handler:
+    def __init__(self, db_name="tokens.db"):
+        self.db_name = db_name
+        self._create_table()
 
-    def _ensure_db(self):
-        """Initialize SQLite DB and table if not exists."""
-        with self._connect() as conn:
-            conn.execute("""
-                CREATE TABLE IF NOT EXISTS google_tokens (
-                    email TEXT PRIMARY KEY,
-                    access_token TEXT,
-                    refresh_token TEXT,
-                    expiry TEXT
+    def _create_table(self):
+        with sqlite3.connect(self.db_name) as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS tokens (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    token TEXT NOT NULL,
+                    refresh_token TEXT NOT NULL,
+                    token_uri TEXT NOT NULL,
+                    client_id TEXT NOT NULL,
+                    client_secret TEXT NOT NULL,
+                    scopes TEXT NOT NULL,
+                    expiry TEXT NOT NULL
                 )
             """)
-        print(f"✅ Database initialized at {self.db_path.resolve()}")
-
-    # === TOKEN MANAGEMENT ===
-
-    def save_tokens(self, email, access_token, refresh_token, expiry):
-        """Insert or update tokens for a user."""
-        with self._connect() as conn:
-            conn.execute("""
-                INSERT INTO google_tokens (email, access_token, refresh_token, expiry)
-                VALUES (?, ?, ?, ?)
-                ON CONFLICT(email) DO UPDATE SET
-                    access_token=excluded.access_token,
-                    refresh_token=COALESCE(excluded.refresh_token, google_tokens.refresh_token),
-                    expiry=excluded.expiry
-            """, (email, access_token, refresh_token, expiry))
             conn.commit()
 
-    def get_tokens(self, email):
-        """Retrieve stored tokens for a given email."""
-        with self._connect() as conn:
-            cur = conn.execute(
-                "SELECT access_token, refresh_token, expiry FROM google_tokens WHERE email=?",
-                (email,),
-            )
-            row = cur.fetchone()
+    def save_token(self, token_data: dict):
+        with sqlite3.connect(self.db_name) as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT INTO tokens (token, refresh_token, token_uri, client_id, client_secret, scopes, expiry)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, (
+                token_data["token"],
+                token_data["refresh_token"],
+                token_data["token_uri"],
+                token_data["client_id"],
+                token_data["client_secret"],
+                json.dumps(token_data["scopes"]),
+                token_data["expiry"]
+            ))
+            conn.commit()
 
-        if row:
-            access_token, refresh_token, expiry = row
-            return {
-                "access_token": access_token,
-                "refresh_token": refresh_token,
-                "expiry": expiry,
-            }
-        return None
+    def get_token(self, token_id: int):
+        with sqlite3.connect(self.db_name) as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM tokens WHERE id = ?", (token_id,))
+            row = cursor.fetchone()
+            if row:
+                return {
+                    "id": row[0],
+                    "token": row[1],
+                    "refresh_token": row[2],
+                    "token_uri": row[3],
+                    "client_id": row[4],
+                    "client_secret": row[5],
+                    "scopes": json.loads(row[6]),
+                    "expiry": row[7]
+                }
+            return None
 
     def get_last_token(self):
-        """Retrieve the most recently stored token from any user."""
-        with self._connect() as conn:
-            cur = conn.execute("""
-                SELECT email, access_token, refresh_token, expiry
-                FROM google_tokens
-                ORDER BY datetime(expiry) DESC
-                LIMIT 1
-            """)
-            row = cur.fetchone()
-
-        if row:
-            email, access_token, refresh_token, expiry = row
-            return {
-                "email": email,
-                "access_token": access_token,
-                "refresh_token": refresh_token,
-                "expiry": expiry,
-            }
-        return None
-
-
-    def update_access_token(self, email, access_token, expiry):
-        """Update access token and expiry (after refresh)."""
-        with self._connect() as conn:
-            conn.execute(
-                "UPDATE google_tokens SET access_token=?, expiry=? WHERE email=?",
-                (access_token, expiry, email),
-            )
-            conn.commit()
-
-    def delete_user(self, email):
-        """Delete token entry for a user."""
-        with self._connect() as conn:
-            conn.execute("DELETE FROM google_tokens WHERE email=?", (email,))
-            conn.commit()
+        with sqlite3.connect(self.db_name) as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM tokens ORDER BY id DESC LIMIT 1")
+            row = cursor.fetchone()
+            return self._row_to_dict(row) if row else None
+        
+    def _row_to_dict(self, row):
+        return {
+            "id": row[0],
+            "token": row[1],
+            "refresh_token": row[2],
+            "token_uri": row[3],
+            "client_id": row[4],
+            "client_secret": row[5],
+            "scopes": json.loads(row[6]),
+            "expiry": row[7]
+        }
+    
+    def list_tokens(self):
+        with sqlite3.connect(self.db_name) as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM tokens")
+            rows = cursor.fetchall()
+            return [
+                {
+                    "id": row[0],
+                    "token": row[1],
+                    "refresh_token": row[2],
+                    "token_uri": row[3],
+                    "client_id": row[4],
+                    "client_secret": row[5],
+                    "scopes": json.loads(row[6]),
+                    "expiry": row[7]
+                }
+                for row in rows
+            ]
