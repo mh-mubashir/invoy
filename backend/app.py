@@ -15,6 +15,8 @@ from backend.calender_routes import router as calendar_router
 # Load .env file from project root
 load_dotenv(Path(__file__).resolve().parents[1] / '.env')
 
+templates = Jinja2Templates(directory="templates")
+
 app = FastAPI(title="Invoy Backend", version="0.1.0")
 
 from fastapi.middleware.cors import CORSMiddleware
@@ -22,9 +24,10 @@ from fastapi.staticfiles import StaticFiles
 
 app.add_middleware(CORSMiddleware, allow_origins=['*'], allow_methods=['*'], allow_headers=['*'])
 
-# # Register routes
-# app.include_router(calendar_router, prefix="", tags=["Calendar"])
-# # Example route to render the login page
+# Register routes
+app.include_router(calendar_router, prefix="", tags=["Calendar"])
+
+# app.mount("/assets", StaticFiles(directory="assets"), name="assets")
 # @app.get("/", response_class=HTMLResponse)
 # async def get_login_page(request: Request):
 #     return templates.TemplateResponse("login.html", {"request": request})
