@@ -111,8 +111,25 @@
 
   <script>
     function signInWithGoogle() {
-      // Redirect to your backend's Google OAuth route
-      window.location.href = "/auth/existing-user-login";
+      // Call the backend's /auth/existing-user-login endpoint
+      fetch('/auth/existing-user-login', {
+        method: 'GET', // Matches your backend's GET route
+      })
+        .then(response => {
+          if (!response.ok) {
+            throw new Error('Backend request failed');
+          }
+          return response.json();
+        })
+        .then(data => {
+          console.log('Success:', data);
+          // Redirect to Vue frontend at http://localhost:4173/
+          window.location.href = 'http://localhost:4173/';
+        })
+        .catch(error => {
+          console.error('Error:', error);
+          alert('An error occurred. Please try again.');
+        });
     }
   </script>
 </body>
