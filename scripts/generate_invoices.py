@@ -114,7 +114,7 @@ def render_invoice(consultant, branding, client_key, client_info, items, period_
     )
     OUTPUT.mkdir(parents=True, exist_ok=True)
     out = OUTPUT / f"{invoice['invoiceId']}.html"
-    out.write_text(html)
+    out.write_text(html, encoding='utf-8')
     return out
 
 def generate_my_invoice(filename):
@@ -134,6 +134,7 @@ def generate_my_invoice(filename):
     print("period_end", period_end)
 
     by_client = {}
+    duration_hours = 0.0
     for e in billable:
         print("e", e)
         client = identify_client(e, consultant['email'])
@@ -158,6 +159,8 @@ def generate_my_invoice(filename):
             'agenda': (e.description or '').split('Agenda:')[-1].strip() if 'Agenda:' in (e.description or '') else '',
             'durationHours': e.duration_hours
         })
+        duration_hours = e.duration_hours
+        rate = float(consultant['hourlyRate'])
     print("by_client", by_client)
     generated = []
     for key, data in by_client.items():
@@ -166,7 +169,7 @@ def generate_my_invoice(filename):
 
     print('Generated invoices:', *generated, sep='\n - ')
 
-
+    return out, duration_hours, rate
 def main():
     parser = argparse.ArgumentParser(description='Generate invoice HTML from calendar txt sample.')
     parser.add_argument('--input', default=str(DATA / 'calendar_sample.txt'), help='Path to calendar txt')
