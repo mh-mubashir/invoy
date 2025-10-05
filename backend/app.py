@@ -6,6 +6,7 @@ from .ai import allocate_hours
 from .utils import finalize_invoice
 from pathlib import Path
 from dotenv import load_dotenv
+import os
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
@@ -51,7 +52,17 @@ class AllocateRequest(BaseModel):
 
 @app.post("/stt")
 async def stt_endpoint(file: UploadFile = File(...)):
-    text = await transcribe_audio(file)
+    # Save the uploaded file temporarily
+    temp_path = f"temp_{file.filename}"
+    with open(temp_path, "wb") as f:
+        f.write(await file.read())
+        print("Saved uploaded file to:", temp_path)
+    #Call the transcription function
+    text = transcribe_audio(file)
+
+    # Remove temp file
+    os.remove(temp_path)
+
     return {"text": text}
 
 @app.post("/ai-invoice/allocate")
