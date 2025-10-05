@@ -147,30 +147,61 @@ def load_credentials(email: str):
 async def dummy_auth():
     return {"message": f"Dummy login successful!"}
 
-# ---------- CALENDAR ----------
-@router.get("/calendar/events")
-def get_calendar_events(
-    email: str = Query(None, description="User email to fetch calendar"),
-    month: int = Query(None, description="Month number (1-12)"),
-    year: int = Query(None, description="Year"),
-    attendee_email: str = Query(None, description="Filter by attendee email"),
-    save_to_file: bool = Query(True, description="Save results to events.txt")
-):
-    try:
-        credentials = load_credentials(email)
-        headers = {"Authorization": f"Bearer {credentials.token}"}
 
-        now = datetime.utcnow()
-        month = month or now.month
-        year = year or now.year
+def get_min_max_time(periodLabel):
+    # Example inputs
+    # periodLabel = "2025-09-30:2025-10-15"
+    # month, year = None, None
 
+    now = datetime.utcnow()
+
+    # Default to current month if no month/year provided
+    month = month or now.month
+    year = year or now.year
+
+    # Check if periodLabel contains a date range (e.g. "YYYY-MM-DD:YYYY-MM-DD")
+    start_time = None
+    end_time = None
+
+    if periodLabel and ":" in periodLabel:
+        try:
+            start_str, end_str = periodLabel.split(":")
+            start_time = datetime.strptime(start_str, "%Y-%m-%d").isoformat() + "Z"
+            end_time = datetime.strptime(end_str, "%Y-%m-%d").isoformat() + "Z"
+        except ValueError:
+            print(f"⚠️ Invalid periodLabel format: {periodLabel} (expected YYYY-MM-DD:YYYY-MM-DD)")
+
+    # Use provided start/end times, or default to the first and last day of the month
+    if start_time and end_time:
+        time_min = start_time
+        time_max = end_time
+    else:
         time_min = datetime(year, month, 1).isoformat() + "Z"
         time_max = (
             datetime(year + 1, 1, 1).isoformat() + "Z"
             if month == 12
             else datetime(year, month + 1, 1).isoformat() + "Z"
         )
-        print(f"📅 [CALENDAR] Fetching events for {month}/{year}...")
+
+    print("🕓 time_min:", time_min)
+    print("🕓 time_max:", time_max)
+
+    return time_min, time_max
+
+# ---------- CALENDAR ----------
+@router.get("/calendar/events")
+def get_calendar_events(
+    attendee: str = Query(..., description="Attendee email to fetch calendar"),  # required
+    periodLabel: str = Query(..., description="Time period label"),  # ✅ now str not int
+    email: str = Query(None, description="Optional user email"),  # optional if needed
+    save_to_file: bool = Query(True, description="Save results to events.txt")
+):
+    try:
+        credentials = load_credentials(email)
+        headers = {"Authorization": f"Bearer {credentials.token}"}
+
+        print(f"🔹 Fetching calendar events for {periodLabel}...")
+        time_min, time_max = get_min_max_time(periodLabel)
 
         params = {"timeMin": time_min, "timeMax": time_max, "singleEvents": True, "orderBy": "startTime"}
         response = requests.get(
@@ -193,11 +224,11 @@ def get_calendar_events(
         filtered = events
         print(f"🔹 [FILTER] Found {len(filtered)} business-related events.")
 
-        if attendee_email:
+        if attendee:
             filtered = [
                 e for e in filtered
                 if "attendees" in e and any(
-                    attendee_email.lower() in a.get("email", "").lower()
+                    attendee.lower() in a.get("email", "").lower()
                     for a in e["attendees"]
                 )
             ]
@@ -233,14 +264,36 @@ def get_calendar_events(
                 json.dump(event_data, f, separators=(',', ':'))
             print(f"💾 [WRITE] Saved {len(filtered)} events to events.txt")
 
-        return {
-            "total": len(filtered),
-            "saved_to": "events.txt" if save_to_file else None,
-            "filters": {"month": month, "year": year, "attendee_email": attendee_email},
-            "events": filtered
-        }
 
+        # return {
+        #     "total": len(filtered),
+        #     "saved_to": "events.txt" if save_to_file else None,
+        #     "filters": {"month": month, "year": year, "attendee": attendee},
+        #     "events": filtered
+        # }
+    
+        # Fake data for testing
+        data = {
+            "totalH": 12.5,
+            "hourly": 200,
+            "invoicePath": "/invoices/sample.pdf",
+            "attendee": attendee,
+            "periodLabel": periodLabel,
+        }
+        # Return as JSON (explicitly)
+        return JSONResponse(content=data)
     except Exception as e:
         print("❌ [ERROR] Calendar event fetch failed:", e)
         return JSONResponse({"error": str(e)}, status_code=500)
+    
+        # # Fake data for testing
+        # data = {
+        #     "totalH": 12.5,
+        #     "hourly": 200,
+        #     "invoicePath": "/invoices/sample.pdf",
+        #     "attendee": attendee,
+        #     "periodLabel": periodLabel,
+        # }
+        # # Return as JSON (explicitly)
+        # return JSONResponse(content=data)
 

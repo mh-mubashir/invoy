@@ -101,20 +101,72 @@ export default function App() {
   const emailValid = !attendee || /.+@.+\..+/.test(attendee)
   const canFetch = emailValid && attendee && ((from && to) || quick !== null)
 
-  async function fetchCalendar(){
-    if (!canFetch) return
-    setLoadingCal(true)
+  async function fetchCalendar() {
+    console.log('Fetching calendar with canFetch3:', canFetch);
+    if (!canFetch) return;
+    setLoadingCal(true);
     try {
-      // Placeholder for actual backend call.
-      const periodLabel = quick === 'current' ? 'Current Month' : quick === 'last' ? 'Last Month' : `${from} → ${to}`
-      const totalH = 12.5 // replace with real computed value from backend
-      const hourly = 200 // could be read from config later
-      const totalC = totalH * hourly
-      const samplePath = '/invoices/INV-jane-doe_acme-com-202509.html' // placeholder for generated invoice
-      setInvSummary({ path: samplePath, totalHours: totalH, totalCost: totalC, period: periodLabel })
-      setPreviewUrl(samplePath)
-      setMsgs(m=>[...m, <Message role="ai" key={m.length}>Fetched calendar data for <b>{attendee}</b> <span className="text-slate-500">({periodLabel})</span>.</Message>])
-    } finally { setLoadingCal(false) }
+      console.log('Fetching calendar with params1:', attendee);
+      const periodLabel = quick === 'current'
+        ? 'Current Month'
+        : quick === 'last'
+        ? 'Last Month'
+        : `${from}:${to}`;
+      console.log('Fetching calendar with periodLabel:', periodLabel);
+
+      const myParams = new URLSearchParams({ attendee, periodLabel });
+
+      console.log('Fetching calendar with myParams:', myParams.toString());
+
+      // Use full URL for backend call  
+      const response = await fetch(`http://localhost:8000/calendar/events?${myParams.toString()}`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      const text = await response.text();
+      console.log('Raw response:', text);
+
+      if (!response.ok) {
+        throw new Error(`Fetch failed (${response.status})`);
+      }
+
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        throw new Error('Response was not valid JSON — check backend route.');
+      }
+
+      const { totalH, hourly, invoicePath } = data;
+      const totalC = totalH * hourly;
+
+      setInvSummary({
+        path: invoicePath,
+        totalHours: totalH,
+        totalCost: totalC,
+        period: periodLabel,
+      });
+
+      setPreviewUrl(invoicePath);
+      setMsgs(m => [
+        ...m,
+        <Message role="ai" key={m.length}>
+          Fetched calendar data for <b>{attendee}</b>{' '}
+          <span className="text-slate-500">({periodLabel})</span>.
+        </Message>,
+      ]);
+    } catch (err) {
+      console.error('fetchCalendar error:', err);
+      setMsgs(m => [
+        ...m,
+        <Message role="ai" key={m.length} className="text-red-500">
+          Error fetching calendar: {err.message}
+        </Message>,
+      ]);
+    } finally {
+      setLoadingCal(false);
+    }
   }
 
   async function onMic() {
