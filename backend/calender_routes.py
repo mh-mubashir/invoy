@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from dotenv import load_dotenv
 from google.auth.transport.requests import Request as GoogleRequest
 
-from src.database.db import UserToken, SessionLocal
+from backend.db import UserToken, SessionLocal
 
 # Load env
 load_dotenv()

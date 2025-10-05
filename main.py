@@ -2,7 +2,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from src.calendar.routes import router as calendar_router
+from backend.calender_routes import router as calendar_router
 
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
