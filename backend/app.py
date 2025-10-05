@@ -23,10 +23,6 @@ async def no_cache_html(request: Request, call_next):
         response.headers["Pragma"] = "no-cache"
     return response
 
-# Serve built web app at root
-app.mount('/', StaticFiles(directory=str(Path(__file__).resolve().parents[1] / 'web' / 'dist'), html=True), name='root')
-
-
 class AllocateRequest(BaseModel):
     client: str | None = None
     total_hours: float | None = None
@@ -57,3 +53,10 @@ class FinalizeRequest(BaseModel):
 async def finalize(req: FinalizeRequest):
     out = finalize_invoice(req.client, req.line_items, req.billing_period)
     return out
+
+# Mount static files AFTER API routes so they don't intercept API calls
+# Serve output folder for invoice previews
+app.mount('/invoices', StaticFiles(directory=str(Path(__file__).resolve().parents[1] / 'output')), name='invoices')
+
+# Serve built web app at root (catch-all, must be last)
+app.mount('/', StaticFiles(directory=str(Path(__file__).resolve().parents[1] / 'web' / 'dist'), html=True), name='root')

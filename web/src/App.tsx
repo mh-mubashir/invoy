@@ -83,6 +83,8 @@ export default function App() {
   const [to, setTo] = useState('')
   const [quick, setQuick] = useState<'current'|'last'|null>(null)
   const [loadingCal, setLoadingCal] = useState(false)
+  const [invSummary, setInvSummary] = useState<{ path?: string; totalHours?: number; totalCost?: number; period?: string } | null>(null)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
 
   function onFrom(v: string){
     setFrom(v); if (v){ setQuick(null) }
@@ -103,8 +105,15 @@ export default function App() {
     if (!canFetch) return
     setLoadingCal(true)
     try {
-      // Placeholder: integrate real backend call later
-      setMsgs(m=>[...m, <Message role="ai" key={m.length}>Fetched calendar data for <b>{attendee}</b> {quick? `(${quick} month)` : `(${from} → ${to})`}.</Message>])
+      // Placeholder for actual backend call.
+      const periodLabel = quick === 'current' ? 'Current Month' : quick === 'last' ? 'Last Month' : `${from} → ${to}`
+      const totalH = 12.5 // replace with real computed value from backend
+      const hourly = 200 // could be read from config later
+      const totalC = totalH * hourly
+      const samplePath = '/invoices/INV-jane-doe_acme-com-202509.html' // placeholder for generated invoice
+      setInvSummary({ path: samplePath, totalHours: totalH, totalCost: totalC, period: periodLabel })
+      setPreviewUrl(samplePath)
+      setMsgs(m=>[...m, <Message role="ai" key={m.length}>Fetched calendar data for <b>{attendee}</b> <span className="text-slate-500">({periodLabel})</span>.</Message>])
     } finally { setLoadingCal(false) }
   }
 
@@ -128,28 +137,83 @@ export default function App() {
     }, 300)
   }
 
+  async function finalizeInvoice(allocData: any) {
+    try {
+      const res = await fetch('/ai-invoice/finalize', { 
+        method: 'POST', 
+        headers: { 'Content-Type': 'application/json' }, 
+        body: JSON.stringify({ 
+          client: allocData.client_name, 
+          line_items: allocData.line_items, 
+          billing_period: allocData.billing_period 
+        }) 
+      })
+      const data = await res.json()
+      setMsgs(m => [...m, <Message role="ai" key={m.length}>
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-semibold">
+            <span className="text-xl">✅</span>
+            <span>Invoice Generated Successfully</span>
+          </div>
+          <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+            <div className="text-slate-600 dark:text-slate-400">Client</div>
+            <div className="text-slate-900 dark:text-slate-100 font-medium">{data.client_name}</div>
+            <div className="text-slate-600 dark:text-slate-400">Billing Period</div>
+            <div className="text-slate-900 dark:text-slate-100 font-medium">{data.billing_period}</div>
+            <div className="text-slate-600 dark:text-slate-400">Total Hours</div>
+            <div className="text-slate-900 dark:text-slate-100 font-medium">{data.total_hours.toFixed(1)}</div>
+            <div className="text-slate-600 dark:text-slate-400">Total Cost</div>
+            <div className="text-slate-900 dark:text-slate-100 font-medium">${data.total_cost.toFixed(2)}</div>
+            <div className="text-slate-600 dark:text-slate-400">Invoice ID</div>
+            <div className="text-slate-900 dark:text-slate-100 font-mono text-xs">{data.invoice_id}</div>
+          </div>
+          <button onClick={()=>setPreviewUrl(data.path)} className="w-full rounded-lg px-4 py-2.5 bg-sky-500 hover:bg-sky-600 text-white font-semibold shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2">
+            <span>👁️</span> View Invoice
+          </button>
+        </div>
+      </Message>])
+    } catch {
+      setMsgs(m => [...m, <Message role="ai" key={m.length}>Failed to finalize invoice.</Message>])
+    }
+  }
+
   async function onSend() {
     if (!text.trim()) return
     setMsgs(m => [...m, <Message role="user" key={m.length}>{text.split('\n').map((l,i)=><div key={i}>{l}</div>)}</Message>])
     setText('')
-    setMsgs(m => [...m, <Message role="ai" key={m.length}><span className="inline-flex items-center gap-2"><span className="h-2 w-2 animate-pulse rounded-full bg-slate-400"></span>Thinking…</span></Message>])
+    const loaderId = Date.now()
+    setMsgs(m => [...m, <Message role="ai" key={loaderId}>
+      <div className="flex items-center gap-3">
+        <div className="flex gap-1">
+          <span className="h-2 w-2 rounded-full bg-sky-500 animate-bounce" style={{animationDelay:'0ms'}}></span>
+          <span className="h-2 w-2 rounded-full bg-sky-500 animate-bounce" style={{animationDelay:'150ms'}}></span>
+          <span className="h-2 w-2 rounded-full bg-sky-500 animate-bounce" style={{animationDelay:'300ms'}}></span>
+        </div>
+        <span className="text-slate-600 dark:text-slate-400 text-sm">Analyzing your request...</span>
+      </div>
+    </Message>])
     try {
       const res = await fetch('/ai-invoice/allocate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ client: client || null, total_hours: hours ? parseFloat(hours) : null, freeform: text }) })
       const data = await res.json()
+      // Remove loader
+      setMsgs(m => m.filter(msg => msg.key !== loaderId))
+      
       const rows = (data.line_items||[]).map((li: any, idx: number) => (
         <tr key={idx} className="border-b last:border-b-0 border-slate-200 dark:border-slate-700">
-          <td className="py-2 pr-3">{li.subject}</td>
-          <td className="py-2 pr-3 text-slate-600 dark:text-slate-300">{li.justification}</td>
-          <td className="py-2 pl-3 text-right font-semibold">{Number(li.estimated_hours).toFixed(1)}</td>
+          <td className="py-2 pr-3">{li.subject || '-'}</td>
+          <td className="py-2 pr-3 text-slate-600 dark:text-slate-300">{li.justification || '-'}</td>
+          <td className="py-2 pl-3 text-right font-semibold">{(li.estimated_hours || 0).toFixed(1)}</td>
         </tr>
       ))
-      setMsgs(m => [...m, <Message role="ai" key={m.length}>
+      setMsgs(m => [...m, <Message role="ai" key={Date.now()}>
         <div className="text-sm text-slate-600 dark:text-slate-300 mb-3">
-          <span className="font-medium text-slate-900 dark:text-slate-100">{data.client_name}</span>
+          <span className="font-medium text-slate-900 dark:text-slate-100">{data.client_name || 'Unknown Client'}</span>
           <span className="mx-2 text-slate-400">•</span>
-          Total <span className="font-medium text-slate-900 dark:text-slate-100">{Number(data.total_hours_billed).toFixed(1)}h</span>
+          Total <span className="font-medium text-slate-900 dark:text-slate-100">{(data.total_hours_billed || 0).toFixed(1)}h</span>
+          <span className="mx-2 text-slate-400">•</span>
+          <span className="text-xs">Confidence: {((data.confidence || 0) * 100).toFixed(0)}%</span>
         </div>
-        <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+        <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 mb-3">
           <table className="w-full text-sm">
             <thead className="bg-slate-50/80 dark:bg-slate-900/40 text-slate-700 dark:text-slate-200">
               <tr>
@@ -161,19 +225,25 @@ export default function App() {
             <tbody className="bg-white dark:bg-slate-800">{rows}</tbody>
           </table>
         </div>
+        <button onClick={()=>finalizeInvoice(data)} className="w-full rounded-lg px-4 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold shadow-md hover:shadow-lg transition-all">
+          Finalize & Generate Invoice
+        </button>
       </Message>])
     } catch {
-      setMsgs(m => [...m, <Message role="ai" key={m.length}>Allocation failed.</Message>])
+      setMsgs(m => m.filter(msg => msg.key !== loaderId))
+      setMsgs(m => [...m, <Message role="ai" key={Date.now()}>Allocation failed. Please try again.</Message>])
     }
   }
 
   return (
     <div className="h-screen grid grid-rows-[auto,1fr] bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900">
-      <header className="px-4 py-3 bg-white/80 dark:bg-slate-900/80 backdrop-blur border-b border-slate-200 dark:border-slate-800">
-        <div className="max-w-6xl mx-auto flex items-center gap-3">
-          <img src={logoUrl} alt="Invoy" className="h-8 w-8 rounded-lg object-cover" />
-          <div className="font-semibold text-slate-900 dark:text-slate-100 flex-1">Invoy • AI Assist</div>
-          <button onClick={()=>setDark(!dark)} className="rounded-full px-3 py-1.5 text-sm border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 shadow-sm">{dark? 'Light' : 'Dark'}</button>
+      <header className="px-6 py-4 bg-white/70 dark:bg-slate-950/70 backdrop-blur-xl border-b border-slate-200/50 dark:border-slate-800/50">
+        <div className="max-w-7xl mx-auto flex items-center gap-4">
+          <img src={logoUrl} alt="Invoy AI" className="h-9 w-9 rounded-xl object-cover" />
+          <div className="font-semibold text-[17px] tracking-tight text-slate-900 dark:text-white flex-1">Invoy AI</div>
+          <button onClick={()=>setDark(!dark)} className="rounded-full px-4 py-1.5 text-[13px] font-medium border border-slate-300/60 dark:border-slate-700/60 text-slate-700 dark:text-slate-300 bg-white/80 dark:bg-slate-800/80 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors backdrop-blur">
+            {dark? '☀️ Light' : '🌙 Dark'}
+          </button>
         </div>
       </header>
       {/* Two-column app area: sidebar + chat column */}
@@ -182,34 +252,72 @@ export default function App() {
         <div className="flex gap-8 h-full w-full"> 
         {/* Sidebar */}
           {/* self-start sticky top-20 h-fit is good, but for full height, remove h-fit */}
-          <aside className="w-[320px] bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm flex-shrink-0"> {/* Removed sticky/h-fit, added flex-shrink-0 for explicit sizing */}
-            <div className="text-slate-900 dark:text-slate-100 font-semibold mb-3">Generate from Calendar</div>
-            <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">Attendee Email:</label>
-            <input value={attendee} onChange={e=>setAttendee(e.target.value)} type="email" placeholder="name@company.com" className={`w-full mb-3 rounded-lg border px-3 py-2 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 ${emailValid? 'border-slate-300 dark:border-slate-700':'border-red-500'}`} />
-
-            <div className="grid grid-cols-2 gap-2 mb-2">
-              <div>
-                <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">From: Date</label>
-                <input disabled={rangeDisabled} value={from} onChange={e=>onFrom(e.target.value)} type="date" className="w-full rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 disabled:opacity-50" />
-              </div>
-              <div>
-                <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">To Date</label>
-                <input disabled={rangeDisabled} value={to} onChange={e=>onTo(e.target.value)} type="date" className="w-full rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 disabled:opacity-50" />
-              </div>
+          <aside className="w-[360px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-lg flex-shrink-0 overflow-hidden">
+            <div className="px-6 py-5 border-b border-slate-200 dark:border-slate-800">
+              <div className="text-slate-900 dark:text-slate-100 font-semibold text-lg">Generate from Calendar</div>
+              <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">Fetch billable meetings from your calendar</div>
             </div>
 
-            <div className="flex items-center gap-2 mb-3">
-              <button disabled={quickDisabled} onClick={()=>selectQuick('current')} className={`px-3 py-1.5 rounded-full border text-sm ${quick==='current' ? 'bg-sky-500 text-white border-sky-500' : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700'} disabled:opacity-50`}>Current Month</button>
-              <button disabled={quickDisabled} onClick={()=>selectQuick('last')} className={`px-3 py-1.5 rounded-full border text-sm ${quick==='last' ? 'bg-sky-500 text-white border-sky-500' : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700'} disabled:opacity-50`}>Last Month</button>
-            </div>
+            <div className="px-6 py-5 space-y-5">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Client Email</label>
+                <input value={attendee} onChange={e=>setAttendee(e.target.value)} type="email" placeholder="name@company.com" className={`w-full rounded-lg border px-4 py-2.5 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 transition-colors focus:outline-none focus:ring-2 focus:ring-sky-400 ${emailValid? 'border-slate-300 dark:border-slate-700':'border-red-500'}`} />
+              </div>
 
-            <button onClick={fetchCalendar} disabled={!canFetch || loadingCal} className={`w-full rounded-lg px-4 py-2 font-semibold ${canFetch? 'bg-sky-500 hover:bg-sky-600 text-white':'bg-slate-200 text-slate-500'} ${loadingCal? 'opacity-75':''}`}>{loadingCal? 'Fetching…':'Fetch Calendar Data'}</button>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Date Range</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <div className="text-xs text-slate-500 dark:text-slate-400 mb-1.5">From</div>
+                    <input disabled={rangeDisabled} value={from} onChange={e=>onFrom(e.target.value)} type="date" className="w-full rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2.5 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 disabled:opacity-40 transition-opacity focus:outline-none focus:ring-2 focus:ring-sky-400" />
+                  </div>
+                  <div>
+                    <div className="text-xs text-slate-500 dark:text-slate-400 mb-1.5">To</div>
+                    <input disabled={rangeDisabled} value={to} onChange={e=>onTo(e.target.value)} type="date" className="w-full rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2.5 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 disabled:opacity-40 transition-opacity focus:outline-none focus:ring-2 focus:ring-sky-400" />
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Quick Select</label>
+                <div className="flex items-center gap-2">
+                  <button disabled={quickDisabled} onClick={()=>selectQuick('current')} className={`flex-1 px-4 py-2.5 rounded-lg border text-sm font-medium transition-all ${quick==='current' ? 'bg-sky-500 text-white border-sky-500 shadow-sm' : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700 hover:border-sky-400'} disabled:opacity-40 disabled:cursor-not-allowed`}>Current Month</button>
+                  <button disabled={quickDisabled} onClick={()=>selectQuick('last')} className={`flex-1 px-4 py-2.5 rounded-lg border text-sm font-medium transition-all ${quick==='last' ? 'bg-sky-500 text-white border-sky-500 shadow-sm' : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700 hover:border-sky-400'} disabled:opacity-40 disabled:cursor-not-allowed`}>Last Month</button>
+                </div>
+              </div>
+
+              <button onClick={fetchCalendar} disabled={!canFetch || loadingCal} className={`w-full rounded-lg px-4 py-3 font-semibold transition-all ${canFetch? 'bg-sky-500 hover:bg-sky-600 text-white shadow-md hover:shadow-lg':'bg-slate-200 dark:bg-slate-800 text-slate-500 dark:text-slate-600 cursor-not-allowed'} ${loadingCal? 'opacity-75':''}`}>{loadingCal? 'Fetching…':'Fetch Calendar Data'}</button>
+
+              {invSummary && (
+                <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900 p-4 space-y-3 shadow-sm">
+                  <div className="text-sm font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                    <span className="text-emerald-500">✓</span> Invoice Summary
+                  </div>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-slate-600 dark:text-slate-400">Period</span>
+                      <span className="text-slate-900 dark:text-slate-100 font-medium">{invSummary.period || '-'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-600 dark:text-slate-400">Total Hours</span>
+                      <span className="text-slate-900 dark:text-slate-100 font-medium">{invSummary.totalHours?.toFixed(2) ?? '-'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-600 dark:text-slate-400">Total Cost</span>
+                      <span className="text-slate-900 dark:text-slate-100 font-medium">{invSummary.totalCost ? `$${invSummary.totalCost.toFixed(2)}` : '-'}</span>
+                    </div>
+                  </div>
+                  <button onClick={()=>{ if(invSummary.path){ setPreviewUrl(invSummary.path); window.scrollTo({top:0, behavior:'smooth'}); } }} disabled={!invSummary.path} className={`w-full rounded-lg px-4 py-2.5 text-sm font-semibold transition-all ${invSummary.path? 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-md hover:shadow-lg':'bg-slate-200 dark:bg-slate-800 text-slate-500 dark:text-slate-600 cursor-not-allowed'}`}>
+                    {invSummary.path? '👁️ Preview Invoice' : 'Invoice will be generated'}
+                  </button>
+                </div>
+              )}
+            </div>
           </aside>
 
-          {/* Right column: messages + composer */}
-          {/* No changes needed here, flex-1 will handle remaining space */}
-          <div className="flex-1 min-w-0 flex flex-col rounded-xl overflow-hidden bg-white/60 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800"> {/* Added some background and border to the main chat area */}
-            <main className="flex-1 overflow-auto p-4 custom-scrollbar"> {/* Added custom-scrollbar for styling */}
+          {/* Center: chat column */}
+          <div className="flex-1 min-w-0 flex flex-col rounded-xl overflow-hidden bg-white/60 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
+            <main className="flex-1 overflow-y-auto p-4" style={{scrollBehavior:'smooth'}}>
               {msgs.length === 0 && (
                 <div className="text-center text-slate-500 dark:text-slate-400 mt-8">
                   <div className="text-2xl font-semibold text-slate-800 dark:text-slate-100 mb-2">How can I help you invoice faster?</div>
@@ -220,42 +328,66 @@ export default function App() {
                 {msgs}
               </div>
             </main>
-            <div className="p-4 border-b border-slate-700/50 bg-slate-800/50">
-              <div className="text-sm font-semibold text-slate-200 mb-2">
-                  Invoice Generation Checklist 📝
-              </div>
-              <ul className="text-xs text-slate-400 list-disc list-inside space-y-1 pl-1">
-                <li>
-                    <strong>Client Name:</strong> Always mention the client you are billing (e.g., "for Acme Corp.").
-                </li>
-                <li>
-                    <strong>Total Hours:</strong> State the <strong>exact total hours</strong> to be billed (e.g., "Bill for 40 hours total").
-                </li>
-                <li>
-                    <strong>Work Subjects:</strong> List <strong>each distinct task</strong> or project area clearly (one per line is best).
-                </li>
-                <li>
-                    <em>Example:</em> "10 hours for system setup. 3 hours for team training."
-                </li>
-            </ul>
-            </div>
-            {/* The footer is correctly positioned at the bottom of the right column */}
-            <footer className="bg-white/90 dark:bg-slate-900/80 backdrop-blur border-t border-slate-200 dark:border-slate-800 p-3"> {/* Removed rounded-xl here as the parent is rounded */}
-              <div className="grid gap-2">
-                <div className="flex gap-2">
-                  <input className="flex-1 rounded-full border border-slate-300 dark:border-slate-700 px-4 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-300 dark:bg-slate-800 dark:text-slate-100" placeholder="Client (optional)" value={client} onChange={e=>setClient(e.target.value)} />
-                  <input className="w-48 rounded-full border border-slate-300 dark:border-slate-700 px-4 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-300 dark:bg-slate-800 dark:text-slate-100" placeholder="Total hours (optional)" value={hours} onChange={e=>setHours(e.target.value)} />
+            <div className="px-6 py-4 border-t border-slate-200 dark:border-slate-800 bg-gradient-to-br from-sky-50 to-blue-50 dark:from-slate-800 dark:to-slate-900">
+              <div className="flex items-start gap-3 mb-3">
+                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-sky-500 flex items-center justify-center text-white font-bold text-sm">📝</div>
+                <div>
+                  <div className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-1">Invoice Generation Checklist</div>
+                  <div className="text-xs text-slate-600 dark:text-slate-400">Follow these guidelines for best results</div>
                 </div>
-                <div className="flex gap-2 items-end">
-                  <textarea className="flex-1 rounded-2xl border border-slate-300 dark:border-slate-700 px-4 py-3 min-h-[110px] shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-300 dark:bg-slate-800 dark:text-slate-100" placeholder="Describe the work or list subjects (one per line)…" value={text} onChange={e=>setText(e.target.value)} />
+              </div>
+              <div className="space-y-2.5 text-xs text-slate-700 dark:text-slate-300">
+                <div className="flex items-start gap-2">
+                  <span className="flex-shrink-0 w-5 h-5 rounded-full bg-sky-100 dark:bg-sky-900/40 flex items-center justify-center text-sky-600 dark:text-sky-400 font-bold text-[10px]">1</span>
+                  <div><strong className="text-slate-900 dark:text-slate-100">Client Name:</strong> Always mention the client (e.g., "for Acme Corp.")</div>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="flex-shrink-0 w-5 h-5 rounded-full bg-sky-100 dark:bg-sky-900/40 flex items-center justify-center text-sky-600 dark:text-sky-400 font-bold text-[10px]">2</span>
+                  <div><strong className="text-slate-900 dark:text-slate-100">Total Hours:</strong> State exact total (e.g., "Bill for 40 hours total")</div>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="flex-shrink-0 w-5 h-5 rounded-full bg-sky-100 dark:bg-sky-900/40 flex items-center justify-center text-sky-600 dark:text-sky-400 font-bold text-[10px]">3</span>
+                  <div><strong className="text-slate-900 dark:text-slate-100">Work Subjects:</strong> List each distinct task (one per line is best)</div>
+                </div>
+              </div>
+            </div>
+            {/* Composer footer */}
+            <footer className="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 px-6 py-4">
+              <div className="space-y-3">
+                <div className="flex gap-3">
+                  <input className="flex-1 rounded-xl border border-slate-300 dark:border-slate-700 px-4 py-2.5 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 transition-colors focus:outline-none focus:ring-2 focus:ring-sky-400" placeholder="Client Email" value={client} onChange={e=>setClient(e.target.value)} />
+                </div>
+                <div className="flex gap-3 items-end">
+                  <textarea className="flex-1 rounded-xl border border-slate-300 dark:border-slate-700 px-4 py-3 min-h-[100px] resize-none bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 transition-colors focus:outline-none focus:ring-2 focus:ring-sky-400" placeholder="Describe the work or list subjects (one per line)…" value={text} onChange={e=>setText(e.target.value)} />
                   <div className="flex flex-col gap-2">
-                    <button onClick={onMic} className={`rounded-full px-5 py-2.5 text-white shadow ${recording? 'bg-red-600':'bg-slate-900 hover:bg-slate-800'}`}>{recording? 'Stop':'Mic'}</button>
-                    <button onClick={onSend} className="rounded-full px-5 py-2.5 bg-sky-500 hover:bg-sky-600 text-white font-semibold shadow">Generate</button>
+                    <button onClick={onMic} className={`rounded-xl px-5 py-2.5 font-medium text-white shadow-md transition-all ${recording? 'bg-red-500 hover:bg-red-600':'bg-slate-800 hover:bg-slate-900 dark:bg-slate-700 dark:hover:bg-slate-600'}`}>
+                      {recording? '⏹️ Stop':'🎙️ Mic'}
+                    </button>
+                    <button onClick={onSend} className="rounded-xl px-5 py-2.5 bg-sky-500 hover:bg-sky-600 text-white font-semibold shadow-md hover:shadow-lg transition-all">
+                      Generate
+                    </button>
                   </div>
                 </div>
               </div>
             </footer>
           </div>
+
+          {/* Right: invoice preview panel */}
+          <aside className="w-[420px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-lg flex-shrink-0 overflow-hidden flex flex-col">
+            <div className="px-6 py-5 border-b border-slate-200 dark:border-slate-800">
+              <div className="text-slate-900 dark:text-slate-100 font-semibold text-lg">Invoice Preview</div>
+              <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">Live preview of generated invoice</div>
+            </div>
+            <div className="flex-1 overflow-hidden">
+              {previewUrl ? (
+                <iframe src={previewUrl} className="w-full h-full border-0" title="Invoice Preview" />
+              ) : (
+                <div className="flex items-center justify-center h-full text-slate-400 dark:text-slate-600 text-sm px-6 text-center">
+                  No invoice to preview yet. Generate one from calendar or AI assist.
+                </div>
+              )}
+            </div>
+          </aside>
         </div>
       </div>
     </div>
