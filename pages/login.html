@@ -34,11 +34,9 @@
       color: #1a1a1a;
     }
 
-    .logo-box {
-      width: 28px;
-      height: 28px;
-      background-color: #2563eb;
-      border-radius: 6px;
+    .logo img {
+      width: 36px;
+      height: 36px;
       margin-right: 10px;
     }
 
@@ -94,7 +92,8 @@
 <body>
   <div class="container">
     <div class="logo">
-      <div class="logo-box"></div> InsideBox
+      <img src="invoy.png" alt="Invoy AI">
+      InsideBox
     </div>
 
     <h2>Welcome back</h2>
@@ -106,14 +105,14 @@
     </button>
 
     <div class="footer">
-      Don’t have an account? <a href="#">Sign up</a>
+      Don’t have an account? <a href="/auth/login">Sign up</a>
     </div>
   </div>
 
   <script>
     function signInWithGoogle() {
       // Redirect to your backend's Google OAuth route
-      window.location.href = "/auth/google";
+      window.location.href = "/auth/existing-user-login";
     }
   </script>
 </body>

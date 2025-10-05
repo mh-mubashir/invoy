@@ -143,6 +143,9 @@ def load_credentials(email: str):
 
     return creds
 
+@router.get("/auth/existing-user-login")
+async def dummy_auth():
+    return {"message": f"Dummy login successful!"}
 
 # ---------- CALENDAR ----------
 @router.get("/calendar/events")
