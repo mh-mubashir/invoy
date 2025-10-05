@@ -196,7 +196,7 @@ def get_calendar_events(
     email: str = Query(None, description="Optional user email"),  # optional if needed
     save_to_file: bool = Query(True, description="Save results to events.txt")
 ):
-    try:
+    # try:
         credentials = load_credentials(email)
         headers = {"Authorization": f"Bearer {credentials.token}"}
 
@@ -292,7 +292,7 @@ def get_calendar_events(
                         f.write("\n")
                 print(f"💾 [WRITE] Saved {len(filtered)} events to events.txt")
         print(f"Saving file: {filename}")  
-        generate_my_invoice(filename)
+        out, duration_hours, rate = generate_my_invoice(filename)
 
         # return {
         #     "total": len(filtered),
@@ -303,17 +303,18 @@ def get_calendar_events(
     
         # Fake data for testing
         data = {
-            "totalH": 12.5,
-            "hourly": 200,
-            "invoicePath": "/invoices/sample.pdf",
+            "totalH": duration_hours,
+            "hourly": rate,
+            "invoicePath": str(out),
             "attendee": attendee,
             "periodLabel": periodLabel,
         }
         # Return as JSON (explicitly)
+        print("data", data)
         return JSONResponse(content=data)
-    except Exception as e:
-        print("❌ [ERROR] Calendar event fetch failed:", e)
-        return JSONResponse({"error": str(e)}, status_code=500)
+    # except Exception as e:
+    #     print("❌ [ERROR] Calendar event fetch failed:", e)
+    #     return JSONResponse({"error": str(e)}, status_code=500)
     
         # # Fake data for testing
         # data = {
