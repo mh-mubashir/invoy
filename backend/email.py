@@ -2,6 +2,7 @@ import os
 import resend
 from pathlib import Path
 from typing import Dict
+import base64
 
 # Initialize Resend with API key from env
 resend.api_key = os.getenv('RESEND_API_KEY')
@@ -38,16 +39,31 @@ async def send_invoice_email(invoice_data: Dict, pdf_path_str: str, recipient_em
         print(f"✓ Email body generated ({len(email_body)} chars)")
         
         # Send email via Resend
-        print(f"📨 Sending email to: {recipient_email}")
+        from_email = os.getenv('RESEND_FROM_EMAIL', 'onboarding@resend.dev')
+        
+        # Check if domain is verified (if not using resend.dev default)
+        if 'resend.dev' not in from_email:
+            print(f"📧 Using verified domain email: {from_email}")
+            actual_recipient = recipient_email
+        else:
+            # Fallback to testing mode
+            verified_email = os.getenv('RESEND_VERIFIED_EMAIL', 'mmqpak2015@gmail.com')
+            actual_recipient = verified_email
+            print(f"⚠️  Testing mode: sending to {verified_email} instead of {recipient_email}")
+            print(f"   To send to any email, verify your domain at resend.com/domains")
+        
+        print(f"📨 Sending to: {actual_recipient}")
+        
         params = {
-            "from": f"Invoy <onboarding@resend.dev>",
-            "to": [recipient_email],
+            "from": f"Invoy <{from_email}>",
+            "to": [actual_recipient],
             "subject": f"Invoice {invoice_data['invoice_id']} — {invoice_data['billing_period']}",
             "html": email_body,
             "attachments": [
                 {
                     "filename": f"{invoice_data['invoice_id']}.pdf",
-                    "content": list(pdf_file.read_bytes())
+                    # Resend expects base64-encoded content string
+                    "content": base64.b64encode(pdf_file.read_bytes()).decode("ascii")
                 }
             ]
         }

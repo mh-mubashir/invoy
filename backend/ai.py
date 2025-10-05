@@ -115,9 +115,21 @@ async def allocate_hours(client: str, total_hours: float, subjects: List[str], b
 
 
 async def generate_email_body(invoice_data: Dict) -> str:
-    """Generate personalized email body for invoice delivery using Claude"""
+    """Generate personalized email body for invoice delivery using Claude.
+    Supports optional 'work_summary' to include custom summary of work performed.
+    """
+    # Load consultant name from config
+    from pathlib import Path
+    ROOT = Path(__file__).resolve().parents[1]
+    try:
+        config = json.loads((ROOT / 'data' / 'config.json').read_text())
+        consultant_name = config.get('consultant', {}).get('name', 'Your Consultant')
+    except:
+        consultant_name = invoice_data.get('consultant_name', 'Your Consultant')
+    
     if not _CLAUDE or not os.getenv('ANTHROPIC_API_KEY'):
         # Fallback email template
+        work_summary = (invoice_data.get('work_summary') or '').strip()
         return f"""
 <html>
 <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1f2937; line-height: 1.6;">
@@ -130,19 +142,21 @@ async def generate_email_body(invoice_data: Dict) -> str:
     <p><strong>Invoice Summary:</strong><br>
     Total Hours: {invoice_data.get('total_hours', 0):.1f}<br>
     Total Amount: ${invoice_data.get('total_cost', 0):.2f}</p>
+    {f"<p><strong>Work Summary:</strong><br>{work_summary}</p>" if work_summary else ""}
     
     <p>Please find the detailed invoice attached. If you have any questions or need clarification on any items, don't hesitate to reach out.</p>
     
     <p>Looking forward to our next project!</p>
     
     <p>Best regards,<br>
-    {invoice_data.get('consultant_name', 'Your Consultant')}</p>
+    {consultant_name}</p>
 </body>
 </html>
 """
     
     # Use Claude to generate personalized email
     client_api = anthropic.Anthropic()
+    work_summary = (invoice_data.get('work_summary') or '').strip()
     prompt = f"""Write a warm, professional email to send an invoice to a client. 
 
 Context:
@@ -151,6 +165,8 @@ Context:
 - Total Hours: {invoice_data.get('total_hours')} 
 - Total Cost: ${invoice_data.get('total_cost')}
 - Work done: {len(invoice_data.get('line_items', []))} distinct tasks
+- Custom work summary provided by the consultant (if any): {work_summary or 'N/A'}
+- Consultant name (sign the email with this): {consultant_name}
 
 Tone: Professional yet warm and personable, as if you personally worked with them and value the relationship.
 Key points to include:
@@ -159,6 +175,7 @@ Key points to include:
 - Reference the attached invoice
 - Express enthusiasm for continuing the partnership
 - Keep it concise (3-4 short paragraphs)
+- Sign the email with "{consultant_name}"
 
 Return ONLY the HTML email body (no subject, no greetings like "Subject:"). Use simple HTML formatting."""
 
