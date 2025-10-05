@@ -6,6 +6,11 @@ from .ai import allocate_hours
 from .utils import finalize_invoice
 from pathlib import Path
 from dotenv import load_dotenv
+from fastapi.templating import Jinja2Templates
+from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
+from backend.calender_routes import router as calendar_router
 
 # Load .env file from project root
 load_dotenv(Path(__file__).resolve().parents[1] / '.env')
