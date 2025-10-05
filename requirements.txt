@@ -8,4 +8,8 @@ python-multipart==0.0.9
 vosk==0.3.45
 soundfile==0.12.1
 anthropic==0.34.2
-
+google-auth
+google-auth-oauthlib
+google-auth-httplib2
+requests
+python-dotenv
