@@ -301,11 +301,15 @@ def get_calendar_events(
         #     "events": filtered
         # }
     
+        # Convert absolute path to relative path for frontend
+        invoice_filename = out.name  # Get just the filename
+        invoice_relative_path = f"/invoices/{invoice_filename}"
+        
         # Fake data for testing
         data = {
             "totalH": duration_hours,
             "hourly": rate,
-            "invoicePath": str(out),
+            "invoicePath": invoice_relative_path,
             "attendee": attendee,
             "periodLabel": periodLabel,
         }
