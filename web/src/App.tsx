@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import './index.css'
 import logoUrl from './assets/logo.png'
 import { InvoiceCard } from './InvoiceCard'
@@ -53,7 +53,7 @@ function useRecorder() {
   return { toggle, takeBlob, recording }
 }
 
-function Message({ role, children }: { role: 'user' | 'ai', children: React.ReactNode }) {
+function Message({ role, children, className }: { role: 'user' | 'ai', children: React.ReactNode, className?: string }) {
   const isUser = role === 'user'
   return (
     <div className="w-full">
@@ -61,7 +61,7 @@ function Message({ role, children }: { role: 'user' | 'ai', children: React.Reac
         {!isUser && (
           <img src={logoUrl} alt="Invoy" className="h-9 w-9 rounded-xl object-cover shadow-sm flex-shrink-0" />
         )}
-        <div className={`${isUser ? 'bg-sky-500 text-white rounded-2xl rounded-tr-sm' : 'bg-white dark:bg-slate-800 dark:text-slate-100 text-slate-900 rounded-2xl rounded-tl-sm border border-slate-200 dark:border-slate-700'} shadow-sm px-4 py-3 max-w-[720px] leading-relaxed max-h-[500px] overflow-y-auto`}>{children}</div>
+        <div className={`${isUser ? 'bg-sky-500 text-white rounded-2xl rounded-tr-sm' : 'bg-white dark:bg-slate-800 dark:text-slate-100 text-slate-900 rounded-2xl rounded-tl-sm border border-slate-200 dark:border-slate-700'} shadow-sm px-4 py-3 max-w-[720px] leading-relaxed max-h-[500px] overflow-y-auto ${className || ''}`}>{children}</div>
         {isUser && (
           <div className="flex h-9 w-9 items-center justify-center rounded-full bg-sky-500 text-white shadow-sm flex-shrink-0">You</div>
         )}
@@ -74,9 +74,16 @@ export default function App() {
   const [client, setClient] = useState('')
   const [hours, setHours] = useState('')
   const [text, setText] = useState('')
-  const [msgs, setMsgs] = useState<JSX.Element[]>([])
+  const [msgs, setMsgs] = useState<ReactNode[]>([])
   const { toggle, takeBlob, recording } = useRecorder()
   const { dark, setDark } = useTheme()
+  const messagesContainerRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    if (messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight
+    }
+  }, [msgs])
 
   // Sidebar state
   const [attendee, setAttendee] = useState('')
@@ -157,7 +164,7 @@ export default function App() {
           <span className="text-slate-500">({periodLabel})</span>.
         </Message>,
       ]);
-    } catch (err) {
+    } catch (err: any) {
       console.error('fetchCalendar error:', err);
       setMsgs(m => [
         ...m,
@@ -308,11 +315,11 @@ export default function App() {
 
   return (
     <div className="h-screen grid grid-rows-[auto,1fr] bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900">
-      <header className="px-6 py-4 bg-white/70 dark:bg-slate-950/70 backdrop-blur-xl border-b border-slate-200/50 dark:border-slate-800/50">
-        <div className="max-w-7xl mx-auto flex items-center gap-4">
-          <img src={logoUrl} alt="Invoy AI" className="h-9 w-9 rounded-xl object-cover" />
-          <div className="font-semibold text-[17px] tracking-tight text-slate-900 dark:text-white flex-1">Invoy AI</div>
-          <button onClick={()=>setDark(!dark)} className="rounded-full px-4 py-1.5 text-[13px] font-medium border border-slate-300/60 dark:border-slate-700/60 text-slate-700 dark:text-slate-300 bg-white/80 dark:bg-slate-800/80 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors backdrop-blur">
+      <header className="px-6 py-2 bg-white/70 dark:bg-slate-950/70 backdrop-blur-xl border-b border-slate-200/50 dark:border-slate-800/50">
+        <div className="max-w-7xl mx-auto flex items-center gap-6">
+          <img src={logoUrl} alt="Invoy AI" className="h-16 w-16 rounded-xl object-cover" />
+          <div className="font-bold text-3xl tracking-tight text-slate-900 dark:text-white flex-1">Invoy AI</div>
+          <button onClick={()=>setDark(!dark)} className="rounded-full px-6 py-3 text-base font-medium border border-slate-300/60 dark:border-slate-700/60 text-slate-700 dark:text-slate-300 bg-white/80 dark:bg-slate-800/80 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors backdrop-blur">
             {dark? '☀️ Light' : '🌙 Dark'}
           </button>
         </div>
@@ -388,7 +395,7 @@ export default function App() {
 
           {/* Center: chat column */}
           <div className="flex-1 min-w-0 flex flex-col rounded-xl overflow-hidden bg-white/60 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
-            <main className="flex-1 overflow-y-auto p-4" style={{scrollBehavior:'smooth'}}>
+            <main ref={messagesContainerRef} className="flex-1 overflow-y-auto p-4" style={{scrollBehavior:'smooth'}}>
               {msgs.length === 0 && (
                 <div className="text-center text-slate-500 dark:text-slate-400 mt-8">
                   <div className="text-2xl font-semibold text-slate-800 dark:text-slate-100 mb-2">How can I help you invoice faster?</div>
