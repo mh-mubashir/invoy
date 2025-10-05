@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sign in | Invoy AI</title>
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #f8f9fb;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+    }
+
+    .container {
+      background: #fff;
+      padding: 3rem 3.5rem;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+      width: 360px;
+      text-align: center;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 2rem;
+      font-weight: 600;
+      font-size: 1.4rem;
+      color: #1a1a1a;
+    }
+
+    .logo-box {
+      width: 28px;
+      height: 28px;
+      background-color: #2563eb;
+      border-radius: 6px;
+      margin-right: 10px;
+    }
+
+    h2 {
+      margin: 0 0 0.75rem;
+      font-size: 1.6rem;
+      color: #111827;
+    }
+
+    p {
+      color: #6b7280;
+      margin-bottom: 2rem;
+    }
+
+    .google-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      background: white;
+      color: #111827;
+      font-weight: 500;
+      font-size: 1rem;
+      padding: 0.75rem 1rem;
+      width: 100%;
+      cursor: pointer;
+      transition: background 0.2s ease;
+    }
+
+    .google-btn:hover {
+      background: #f3f4f6;
+    }
+
+    .google-btn img {
+      width: 20px;
+      height: 20px;
+    }
+
+    .footer {
+      margin-top: 1.5rem;
+      font-size: 0.9rem;
+      color: #6b7280;
+    }
+
+    .footer a {
+      color: #2563eb;
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="logo">
+      <div class="logo-box"></div> InsideBox
+    </div>
+
+    <h2>Welcome back</h2>
+    <p>Please sign in with your Google account</p>
+
+    <button class="google-btn" onclick="signInWithGoogle()">
+      <img src="https://www.svgrepo.com/show/355037/google.svg" alt="Google Logo">
+      Sign in with Google
+    </button>
+
+    <div class="footer">
+      Don’t have an account? <a href="#">Sign up</a>
+    </div>
+  </div>
+
+  <script>
+    function signInWithGoogle() {
+      // Redirect to your backend's Google OAuth route
+      window.location.href = "/auth/google";
+    }
+  </script>
+</body>
+</html>
