@@ -1,0 +1,67 @@
+# Calendar export (sample) - Billing Period: 2025-09-01 to 2025-09-30
+# Timezone: America/Los_Angeles
+# Source: Google Calendar API (simulated)
+
+Event:
+  id: ev_001
+  title: Project Kickoff - ACME
+  description: Discussed project scope, milestones, and responsibilities. Agenda: Intro, Scope, Timeline, Q&A.
+  start: 2025-09-03T09:00:00-07:00
+  end:   2025-09-03T10:30:00-07:00
+  status: confirmed
+  attendees:
+    - name: Jane Doe
+      email: jane.doe@acme.com
+    - name: John Consultant
+      email: consultant@example.com
+
+Event:
+  id: ev_002
+  title: Weekly Sync - ACME
+  description: Status review for sprint 12. Agenda includes blockers and deliverables.
+  start: 2025-09-10T09:00:00-07:00
+  end:   2025-09-10T10:00:00-07:00
+  status: confirmed
+  attendees:
+    - name: Jane Doe
+      email: jane.doe@acme.com
+    - name: John Consultant
+      email: consultant@example.com
+
+Event:
+  id: ev_003
+  title: Design Review - BetaCorp
+  description: Reviewed UX flows. Agenda: dashboard layout, mobile responsiveness.
+  start: 2025-09-15T14:00:00-07:00
+  end:   2025-09-15T15:45:00-07:00
+  status: confirmed
+  attendees:
+    - name: Alan Smith
+      email: alan.smith@betacorp.io
+    - name: John Consultant
+      email: consultant@example.com
+
+Event:
+  id: ev_004
+  title: Internal Planning (non-billable)
+  description: Team-only planning; exclude from invoices.
+  start: 2025-09-17T11:00:00-07:00
+  end:   2025-09-17T12:00:00-07:00
+  status: confirmed
+  attendees:
+    - name: John Consultant
+      email: consultant@example.com
+
+Event:
+  id: ev_005
+  title: Monthly Review - ACME
+  description: Final review and next month planning. Agenda: KPIs, roadmap, risks.
+  start: 2025-09-25T09:00:00-07:00
+  end:   2025-09-25T10:30:00-07:00
+  status: confirmed
+  attendees:
+    - name: Jane Doe
+      email: jane.doe@acme.com
+    - name: John Consultant
+      email: consultant@example.com
+
