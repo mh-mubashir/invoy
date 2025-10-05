@@ -7,6 +7,13 @@ from .utils import finalize_invoice
 
 app = FastAPI(title="Invoy Backend", version="0.1.0")
 
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+
+app.add_middleware(CORSMiddleware, allow_origins=['*'], allow_methods=['*'], allow_headers=['*'])
+app.mount('/ui', StaticFiles(directory=str(Path(__file__).resolve().parents[1] / 'frontend'), html=True), name='ui')
+
+
 class AllocateRequest(BaseModel):
     client: str | None = None
     total_hours: float | None = None
