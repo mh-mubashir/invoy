@@ -7,6 +7,12 @@ from .utils import finalize_invoice
 from pathlib import Path
 from dotenv import load_dotenv
 import os
+from fastapi.templating import Jinja2Templates
+from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
+from backend.calender_routes import router as calendar_router
+
 # Load .env file from project root
 load_dotenv(Path(__file__).resolve().parents[1] / '.env')
 
@@ -16,6 +22,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 app.add_middleware(CORSMiddleware, allow_origins=['*'], allow_methods=['*'], allow_headers=['*'])
+
+# # Register routes
+# app.include_router(calendar_router, prefix="", tags=["Calendar"])
+# # Example route to render the login page
+# @app.get("/", response_class=HTMLResponse)
+# async def get_login_page(request: Request):
+#     return templates.TemplateResponse("login.html", {"request": request})
 
 # No-cache for HTML to always serve fresh UI
 @app.middleware("http")
