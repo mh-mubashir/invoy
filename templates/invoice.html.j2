@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Invoice {{ invoice.invoiceId }}</title>
+  <style>
+    :root {
+      --primary: {{ branding.primaryColor }};
+      --accent: {{ branding.accentColor }};
+      --muted: #6b7280;
+    }
+    body { font-family: -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; color: #0f172a; margin: 0; }
+    .container { max-width: 900px; margin: 0 auto; padding: 32px; }
+    header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; }
+    .seller h1 { margin: 0 0 8px; font-size: 22px; color: var(--primary); }
+    .badge { text-align: right; font-size: 12px; color: white; background: var(--primary); padding: 6px 10px; border-radius: 4px; }
+    .section { margin-top: 24px; }
+    .meta { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .card { border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; }
+    h2 { font-size: 16px; margin: 0 0 8px; color: var(--primary); }
+    table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+    th, td { text-align: left; padding: 10px; border-bottom: 1px solid #e5e7eb; vertical-align: top; }
+    th { background: #f8fafc; font-weight: 600; }
+    tfoot td { font-weight: 700; }
+    .right { text-align: right; }
+    footer { margin-top: 32px; font-size: 12px; color: var(--muted); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="seller">
+        <h1>{{ consultant.name }}</h1>
+        <div>{{ consultant.address }}</div>
+        <div>{{ consultant.email }} • {{ consultant.phone }}</div>
+      </div>
+      <div class="badge">{{ branding.badgeText }}</div>
+    </header>
+
+    <div class="meta section">
+      <div class="card">
+        <h2>Bill To</h2>
+        <div>{{ client.name }}</div>
+        <div>{{ client.email }}</div>
+        {% if client.company %}<div>{{ client.company }}</div>{% endif %}
+      </div>
+      <div class="card">
+        <h2>Invoice</h2>
+        <div>Invoice #: <strong>{{ invoice.invoiceId }}</strong></div>
+        <div>Issue Date: <strong>{{ invoice.issueDate }}</strong></div>
+        <div>Billing Period: <strong>{{ invoice.billingPeriodStart }} → {{ invoice.billingPeriodEnd }}</strong></div>
+        <div>Payment Terms: <strong>{{ consultant.paymentTerms }}</strong></div>
+        <div>Currency: <strong>{{ consultant.currency }}</strong></div>
+      </div>
+    </div>
+
+    <div class="section card">
+      <h2>Details</h2>
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 120px;">Date</th>
+            <th style="width: 120px;">Time</th>
+            <th>Subject</th>
+            <th>Agenda</th>
+            <th class="right" style="width: 80px;">Hours</th>
+            <th class="right" style="width: 90px;">Rate</th>
+            <th class="right" style="width: 100px;">Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in items %}
+          <tr>
+            <td>{{ item.date }}</td>
+            <td>{{ item.timeRange }}</td>
+            <td>{{ item.subject }}</td>
+            <td>{{ item.agenda }}</td>
+            <td class="right">{{ '%.2f'|format(item.durationHours) }}</td>
+            <td class="right">{{ currencySymbol }}{{ '%.2f'|format(item.rate) }}</td>
+            <td class="right">{{ currencySymbol }}{{ '%.2f'|format(item.amount) }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+        <tfoot>
+          <tr>
+            <td colspan="5"></td>
+            <td class="right">Subtotal</td>
+            <td class="right">{{ currencySymbol }}{{ '%.2f'|format(totals.subtotal) }}</td>
+          </tr>
+          {% if totals.taxAmount and totals.taxAmount > 0 %}
+          <tr>
+            <td colspan="5"></td>
+            <td class="right">Tax</td>
+            <td class="right">{{ currencySymbol }}{{ '%.2f'|format(totals.taxAmount) }}</td>
+          </tr>
+          {% endif %}
+          <tr>
+            <td colspan="5"></td>
+            <td class="right">Total Due</td>
+            <td class="right">{{ currencySymbol }}{{ '%.2f'|format(totals.totalDue) }}</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+
+    <footer>
+      <div>Payment instructions: {{ consultant.paymentInstructions }}</div>
+      <div>Questions? Contact {{ consultant.email }}</div>
+    </footer>
+  </div>
+</body>
+</html>
