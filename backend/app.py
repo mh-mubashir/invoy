@@ -8,9 +8,10 @@ from .utils import finalize_invoice
 app = FastAPI(title="Invoy Backend", version="0.1.0")
 
 class AllocateRequest(BaseModel):
-    client: str
-    total_hours: float
-    work_subjects: list[str]
+    client: str | None = None
+    total_hours: float | None = None
+    work_subjects: list[str] | None = None
+    freeform: str | None = None
     billing_period: str | None = None
 
 @app.post("/stt")
@@ -20,7 +21,11 @@ async def stt_endpoint(file: UploadFile = File(...)):
 
 @app.post("/ai-invoice/allocate")
 async def ai_allocate(req: AllocateRequest):
-    result = await allocate_hours(req.client, req.total_hours, req.work_subjects, req.billing_period)
+    from .ai import parse_freeform_with_claude
+    if req.freeform:
+        parsed = await parse_freeform_with_claude(req.freeform, req.client, req.total_hours)
+        return JSONResponse(parsed)
+    result = await allocate_hours(req.client or "Unknown Client", float(req.total_hours or 0), req.work_subjects or [], req.billing_period)
     return JSONResponse(result)
 
 class FinalizeRequest(BaseModel):
