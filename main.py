@@ -6,7 +6,7 @@ from fastapi.responses import RedirectResponse, JSONResponse
 from google_auth_oauthlib.flow import Flow
 from dotenv import load_dotenv
 from db_handler import DbHandler
-
+from datatime import timezone
 from fastapi import FastAPI, HTTPException, Request
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
@@ -19,6 +19,7 @@ db = DbHandler()
 app = FastAPI(title="Google Calendar Integration API")
 
 # Google OAuth Configuration
+GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
 CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
 REDIRECT_URI = os.getenv("REDIRECT_URI")
@@ -104,11 +105,28 @@ def callback(request: Request):
         "expires_in": credentials.expiry.isoformat()
     })
 
-
+def refresh_access_token(refresh_token: str):
+    """Exchange a refresh token for a new access token."""
+    data = {
+        "client_id": CLIENT_ID,
+        "client_secret": CLIENT_SECRET,
+        "refresh_token": refresh_token,
+        "grant_type": "refresh_token"
+    }
+    response = requests.post(GOOGLE_TOKEN_URL, data=data)
+    if response.status_code == 200:
+        token_data = response.json()
+        # token_data contains: access_token, expires_in, scope, token_type
+        new_access_token = token_data["access_token"]
+        expiry_time = datetime.now(timezone.utc).timestamp() + token_data["expires_in"]
+        return new_access_token, expiry_time
+    else:
+        print("Failed to refresh:", response.text)
+        return None, None
+    
 # === CALENDAR INTEGRATION ===
 @app.get("/calendar/events")
 def get_calendar_events(
-    access_token: str = Query(..., description="OAuth Access Token"),
     month: int = Query(None, description="Month number (1-12)"),
     year: int = Query(None, description="Year, e.g. 2025"),
     attendee_email: str = Query(None, description="Filter by attendee email"),
@@ -128,9 +146,12 @@ def get_calendar_events(
         else datetime(year, month + 1, 1).isoformat() + "Z"
     )
 
+    user_info = db.get_last_token()
+    access_token = user_info['refresh_token']
+    print("Using access token for:", user_info['email'], access_token)
+
     headers = {"Authorization": f"Bearer {access_token}"}
     params = {"timeMin": time_min, "timeMax": time_max, "singleEvents": True, "orderBy": "startTime"}
-
     response = requests.get(
         "https://www.googleapis.com/calendar/v3/calendars/primary/events",
         headers=headers,
