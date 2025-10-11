@@ -17,3 +17,6 @@ python-multipart
 weasyprint==62.3
 resend==2.4.0
 vosk==0.3.45
+sqlalchemy==2.0.39
+httpx==0.27.2
+anthropic==0.39.0
