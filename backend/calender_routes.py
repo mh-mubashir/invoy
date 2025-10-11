@@ -187,8 +187,12 @@ async def existing_user_login():
         try:
             creds = load_credentials(user.email)
             print(f"✅ Existing user {user.email} authenticated successfully")
-            # Redirect to main app
-            return RedirectResponse(url="http://localhost:8000/")
+            # Return success response for frontend to handle redirect
+            return JSONResponse({
+                "message": f"Login successful for {user.email}!",
+                "success": True,
+                "redirect_url": "http://localhost:8000/"
+            })
         except Exception as e:
             print(f"❌ Token validation failed for {user.email}: {e}")
             return JSONResponse(

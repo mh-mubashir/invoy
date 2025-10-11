@@ -123,8 +123,17 @@
         })
         .then(data => {
           console.log('Success:', data);
-          // Redirect to Vue frontend at http://localhost:4173/
-          window.location.href = 'http://localhost:8000/';
+          
+          // Check if the response indicates success
+          if (data.success && data.redirect_url) {
+            // Redirect to the URL provided by the backend
+            window.location.href = data.redirect_url;
+          } else if (data.message) {
+            // Fallback to the main app if no redirect URL
+            window.location.href = 'http://localhost:8000/';
+          } else {
+            throw new Error('Invalid response format');
+          }
         })
         .catch(error => {
           console.error('Error:', error);
