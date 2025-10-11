@@ -111,13 +111,24 @@
 
   <script>
     function signInWithGoogle() {
+      // Show loading state
+      const button = document.querySelector('.google-btn');
+      const originalText = button.innerHTML;
+      button.innerHTML = '<img src="https://www.svgrepo.com/show/355037/google.svg" alt="Google Logo"> Signing in...';
+      button.disabled = true;
+      
       // Call the backend's /auth/existing-user-login endpoint
       fetch('/auth/existing-user-login', {
-        method: 'GET', // Matches your backend's GET route
+        method: 'GET',
       })
         .then(response => {
           if (!response.ok) {
-            throw new Error('Backend request failed');
+            // Try to get error details from response
+            return response.json().then(errorData => {
+              throw new Error(JSON.stringify(errorData));
+            }).catch(() => {
+              throw new Error('Backend request failed');
+            });
           }
           return response.json();
         })
@@ -137,8 +148,141 @@
         })
         .catch(error => {
           console.error('Error:', error);
-          alert('An error occurred. Please try again.');
+          
+          // Reset button state
+          button.innerHTML = originalText;
+          button.disabled = false;
+          
+          try {
+            // Try to parse error details
+            const errorData = JSON.parse(error.message);
+            handleAuthError(errorData);
+          } catch (parseError) {
+            // Generic error handling
+            handleAuthError({
+              message: 'An error occurred. Please try again.',
+              suggest_action: 'retry'
+            });
+          }
         });
+    }
+    
+    function handleAuthError(errorData) {
+      const { message, suggest_action, error_type, user_email } = errorData;
+      
+      // Always show signup message - no try again option
+      let userMessage = '';
+      
+      if (error_type === 'token_expired') {
+        userMessage = `Your session has expired. Please sign up to continue.`;
+      } else if (error_type === 'no_user') {
+        userMessage = `No account found. Please sign up to get started.`;
+      } else {
+        userMessage = `Authentication failed. Please sign up to continue.`;
+      }
+      
+      // Create custom alert-like dialog
+      const alertDiv = document.createElement('div');
+      alertDiv.id = 'auth-error-modal';
+      alertDiv.style.cssText = `
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: white;
+        padding: 32px;
+        border-radius: 16px;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        z-index: 10000;
+        max-width: 480px;
+        text-align: center;
+        border: 1px solid #e5e7eb;
+        animation: slideIn 0.3s ease-out;
+      `;
+      
+      // Add animation keyframes
+      if (!document.getElementById('auth-modal-styles')) {
+        const style = document.createElement('style');
+        style.id = 'auth-modal-styles';
+        style.textContent = `
+          @keyframes slideIn {
+            from { opacity: 0; transform: translate(-50%, -60%); }
+            to { opacity: 1; transform: translate(-50%, -50%); }
+          }
+        `;
+        document.head.appendChild(style);
+      }
+      
+      alertDiv.innerHTML = `
+        <div style="margin-bottom: 24px;">
+          <div style="color: #1f2937; font-weight: 700; margin-bottom: 16px; font-size: 20px;">Sign Up Required</div>
+          <div style="color: #6b7280; margin-bottom: 24px; font-size: 16px; line-height: 1.6;">${userMessage}</div>
+          <div style="display: flex; justify-content: center; gap: 12px;">
+            <button onclick="window.location.href='http://localhost:8000/auth/signup'" style="background: #2563eb; color: white; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 16px;">Sign Up</button>
+          </div>
+        </div>
+      `;
+      
+      // Add backdrop
+      const backdrop = document.createElement('div');
+      backdrop.id = 'auth-error-backdrop';
+      backdrop.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.6);
+        z-index: 9999;
+        animation: fadeIn 0.3s ease-out;
+      `;
+      
+      // Add fadeIn animation
+      if (!document.getElementById('auth-backdrop-styles')) {
+        const style = document.createElement('style');
+        style.id = 'auth-backdrop-styles';
+        style.textContent = `
+          @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+          }
+        `;
+        document.head.appendChild(style);
+      }
+      
+      // Close function
+      const closeModal = () => {
+        backdrop.remove();
+        alertDiv.remove();
+      };
+      
+      // Close on backdrop click
+      backdrop.onclick = closeModal;
+      
+      // Close on Escape key
+      const handleEscape = (e) => {
+        if (e.key === 'Escape') {
+          closeModal();
+          document.removeEventListener('keydown', handleEscape);
+        }
+      };
+      document.addEventListener('keydown', handleEscape);
+      
+      // Auto-close after 10 seconds for better UX
+      setTimeout(() => {
+        if (document.getElementById('auth-error-modal')) {
+          closeModal();
+        }
+      }, 10000);
+      
+      document.body.appendChild(backdrop);
+      document.body.appendChild(alertDiv);
+      
+      // Focus the action button for better accessibility
+      setTimeout(() => {
+        const button = alertDiv.querySelector('button');
+        if (button) button.focus();
+      }, 100);
     }
   </script>
 </body>

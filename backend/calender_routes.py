@@ -178,10 +178,12 @@ async def existing_user_login():
         user = db.query(UserToken).order_by(UserToken.id.desc()).first()
         
         if not user:
-            return JSONResponse(
-                {"error": "No user found. Please sign up first."}, 
-                status_code=404
-            )
+            return JSONResponse({
+                "error": "No user found. Please sign up first.",
+                "error_type": "no_user",
+                "suggest_action": "signup",
+                "message": "No account found. Please sign up to continue."
+            }, status_code=404)
         
         # Check if tokens are valid and refresh if needed
         try:
@@ -194,11 +196,30 @@ async def existing_user_login():
                 "redirect_url": "http://localhost:8000/"
             })
         except Exception as e:
-            print(f"❌ Token validation failed for {user.email}: {e}")
-            return JSONResponse(
-                {"error": "Authentication expired. Please sign in again."}, 
-                status_code=401
-            )
+            error_message = str(e)
+            print(f"❌ Token validation failed for {user.email}: {error_message}")
+            
+            # Determine specific error type
+            if "refresh token" in error_message.lower() or "expired" in error_message.lower():
+                error_type = "token_expired"
+                suggest_action = "signup"
+                user_message = "Your session has expired. Please sign up again to continue."
+            elif "invalid" in error_message.lower():
+                error_type = "token_invalid"
+                suggest_action = "signup"
+                user_message = "Authentication failed. Please sign up again to continue."
+            else:
+                error_type = "auth_failed"
+                suggest_action = "signup"
+                user_message = "Authentication failed. Please sign up again to continue."
+            
+            return JSONResponse({
+                "error": error_message,
+                "error_type": error_type,
+                "suggest_action": suggest_action,
+                "message": user_message,
+                "user_email": user.email
+            }, status_code=401)
     finally:
         db.close()
 
