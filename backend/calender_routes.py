@@ -100,7 +100,33 @@ def callback(request: Request):
     db.close()
 
     print(f"✅ Tokens saved for {email}")
-    return JSONResponse({"message": f"Login successful for {email}!"})
+    # Redirect to the main app after successful authentication
+    return RedirectResponse(url="http://localhost:8000/")
+    
+
+@router.get("/auth/signup")
+def signup():
+    """Handle signup - same as login flow since we auto-create users."""
+    print("🔹 Starting signup OAuth flow...")
+    flow = Flow.from_client_config(
+        {
+            "web": {
+                "client_id": CLIENT_ID,
+                "client_secret": CLIENT_SECRET,
+                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                "token_uri": "https://oauth2.googleapis.com/token",
+                "redirect_uris": [REDIRECT_URI],
+            }
+        },
+        scopes=SCOPES
+    )
+    flow.redirect_uri = REDIRECT_URI
+    auth_url, _ = flow.authorization_url(
+        access_type="offline",
+        include_granted_scopes="true",
+        prompt="consent"
+    )
+    return RedirectResponse(auth_url)
 
 
 # ---------- TOKEN HELPER ----------
@@ -144,8 +170,33 @@ def load_credentials(email: str):
     return creds
 
 @router.get("/auth/existing-user-login")
-async def dummy_auth():
-    return {"message": f"Dummy login successful!"}
+async def existing_user_login():
+    """Handle existing user login using stored tokens."""
+    db = SessionLocal()
+    try:
+        # Get the most recent user (you could also pass email as query param)
+        user = db.query(UserToken).order_by(UserToken.id.desc()).first()
+        
+        if not user:
+            return JSONResponse(
+                {"error": "No user found. Please sign up first."}, 
+                status_code=404
+            )
+        
+        # Check if tokens are valid and refresh if needed
+        try:
+            creds = load_credentials(user.email)
+            print(f"✅ Existing user {user.email} authenticated successfully")
+            # Redirect to main app
+            return RedirectResponse(url="http://localhost:8000/")
+        except Exception as e:
+            print(f"❌ Token validation failed for {user.email}: {e}")
+            return JSONResponse(
+                {"error": "Authentication expired. Please sign in again."}, 
+                status_code=401
+            )
+    finally:
+        db.close()
 
 
 def get_min_max_time(periodLabel):

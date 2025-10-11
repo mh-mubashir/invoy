@@ -5,7 +5,7 @@ import os
 from vosk import Model, KaldiRecognizer
 
 # Load Vosk model once globally
-model = Model("/home/hamza-ubuntu/Documents/Coding/invoy/vosk-model-small-en-us-0.15")
+model = Model("vosk-model-small-en-us-0.15")
 
 def transcribe_audio(file_path: str) -> str:
     """
